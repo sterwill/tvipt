@@ -24,3 +24,15 @@ void term_println(long val, int format) {
   term_serial.print(val, format);
   term_serial.write('\r');
 }
+
+void term_print_masked(const char * val) {
+  while (*val++ != '\0') {
+    term_serial.print("*");
+  }
+}
+
+void term_println_masked(const char * val) {
+  term_print_masked(val);
+  term_serial.write('\r');  
+}
+

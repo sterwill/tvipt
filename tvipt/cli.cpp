@@ -99,13 +99,16 @@ boolean exec_info(char * tok) {
   term_print("wifi ssid: ");
   term_println(w_info.ssid);
   term_print("wifi pass: ");
-  term_println(w_info.pass);
+  term_println_masked(w_info.pass);
   term_print("wifi address: ");
-  term_println(w_info.address);
+  w_info.address.printTo(term_serial);
+  term_println("");
   term_print("wifi netmask: ");
-  term_println(w_info.netmask);
+  w_info.netmask.printTo(term_serial);
+  term_println("");
   term_print("wifi gateway: ");
-  term_println(w_info.gateway);
+  w_info.gateway.printTo(term_serial);
+  term_println("");
 
   return true;
 }

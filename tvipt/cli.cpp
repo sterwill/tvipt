@@ -76,20 +76,20 @@ static const char * _e_missing_port = "missing port";
 // Help
 //////////////////////////////////////////////////////////////////////////////
 
-boolean exec_help(char * tok) {
+uint8_t exec_help(char * tok) {
   term_println("c ssid pass     connect to WPA network");
   term_println("h|help          print help");
   term_println("i               print info");
   term_println("tcp host port   open TCP connection");
   term_println("s               scan for wireless networks");
-  return true;
+  return RET_OK;
 }
 
 //////////////////////////////////////////////////////////////////////////////
 // Info
 //////////////////////////////////////////////////////////////////////////////
 
-boolean exec_info(char * tok) {
+uint8_t exec_info(char * tok) {
   // Wifi
   
   struct wifi_info w_info;
@@ -111,7 +111,7 @@ boolean exec_info(char * tok) {
   w_info.gateway.printTo(term_serial);
   term_println("");
 
-  return true;
+  return RET_OK;
 }
 
 //////////////////////////////////////////////////////////////////////////////

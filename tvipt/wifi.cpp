@@ -4,7 +4,10 @@
 #include "term.h"
 #include "util.h"
 
+#define TCP_COPY_LIMIT 512 
+
 static struct wifi_info _info;
+static WiFiClient _client;
 
 void wifi_init() {
   WiFi.setPins(8, 7, 4, 2);
@@ -29,6 +32,13 @@ void on_wifi_connected(int old_wifi_status) {
   }
 }
 
+void _wifi_tcp_loop() {
+  if (_client.connected()) {
+    stream_copy(term_serial, _client, TCP_COPY_LIMIT);
+    stream_copy(_client, term_serial, TCP_COPY_LIMIT);
+  }
+}
+
 void wifi_loop() {
   int new_status = WiFi.status();
   switch (new_status) {
@@ -43,6 +53,8 @@ void wifi_loop() {
   _info.address = WiFi.localIP();
   _info.netmask = WiFi.subnetMask();
   _info.gateway = WiFi.gatewayIP();
+
+  _wifi_tcp_loop();
 }
 
 void wifi_connect(const char * ssid, const char * pass) {
@@ -72,9 +84,9 @@ void wifi_scan() {
   }
 
   for (int i = 0; i < count; i++) {
-    term_print("[");
+    term_print("\"");
     term_print(WiFi.SSID(i));
-    term_print("] ");
+    term_print("\" ");
     term_print(WiFi.RSSI(i));
     term_print(" dBm, ");
     term_println(wifi_get_encryption_description(WiFi.encryptionType(i)));
@@ -122,5 +134,11 @@ const char * wifi_get_encryption_description(int type) {
   }
 }
 
+boolean wifi_tcp_is_connected() {
+  return _client.connected();
+}
 
+boolean wifi_tcp_connect(const char * host, uint16_t port) {
+  return _client.connect(host, port);
+}
 

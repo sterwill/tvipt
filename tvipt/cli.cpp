@@ -7,11 +7,25 @@
 // Commands
 //////////////////////////////////////////////////////////////////////////////
 
-#define CMD_CONNECT   "c"
-#define CMD_HELP      "h"
-#define CMD_HELP2     "help"
-#define CMD_INFO      "i"
-#define CMD_SCAN      "s"
+#define CMD_HELP          "h"
+#define CMD_HELP2         "help"
+#define CMD_INFO          "i"
+#define CMD_TCP_CONNECT   "tcp"
+#define CMD_WIFI_CONNECT  "c"
+#define CMD_WIFI_SCAN     "s"
+
+//////////////////////////////////////////////////////////////////////////////
+// Command Executor Return Values
+//////////////////////////////////////////////////////////////////////////////
+
+// Command completed successfully; prompt for another
+#define RET_OK    0
+
+// Command failed with some error; prompt for another
+#define RET_ERR   1
+
+// Command is running and is handling IO
+#define RET_IO    2
 
 //////////////////////////////////////////////////////////////////////////////
 // Parse Utilities
@@ -55,33 +69,20 @@ uint16_t parse_uint16(char * str, uint16_t * dest) {
 static const char * _e_missing_ssid = "missing ssid";
 static const char * _e_missing_password = "missing password";
 static const char * _e_invalid_command = "invalid command: ";
+static const char * _e_missing_host = "missing host";
+static const char * _e_missing_port = "missing port";
 
 //////////////////////////////////////////////////////////////////////////////
-// Connect
+// Help
 //////////////////////////////////////////////////////////////////////////////
 
-boolean exec_connect(char * tok) {
-  char * arg;
-  const char * ssid;
-  const char * password;
-
-  // Parse SSID
-  arg = strtok_r(NULL, " ", &tok);
-  if (arg == NULL) {
-    term_println(_e_missing_ssid);
-    return false;
-  }
-  ssid = arg;
-
-  // Parse password
-  arg = strtok_r(NULL, " ", &tok);
-  if (arg == NULL) {
-    term_println(_e_missing_password);
-    return false;
-  }
-  password = arg;
-
-  wifi_connect(ssid, password);
+boolean exec_help(char * tok) {
+  term_println("c ssid pass     connect to WPA network");
+  term_println("h|help          print help");
+  term_println("i               print info");
+  term_println("tcp host port   open TCP connection");
+  term_println("s               scan for wireless networks");
+  return true;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -114,56 +115,122 @@ boolean exec_info(char * tok) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
-// Scan
+// TCP Connect
 //////////////////////////////////////////////////////////////////////////////
 
-boolean exec_scan(char * tok) {
-  wifi_scan();
-  return true;
+uint8_t exec_tcp_connect(char * tok) {
+  char * arg;
+  const char * host;
+  uint16_t port;
+  
+  // Parse host
+  arg = strtok_r(NULL, " ", &tok);
+  if (arg == NULL) {
+    term_println(_e_missing_host);
+    return RET_ERR;
+  }
+  host = arg;
+
+  // Parse port
+  arg = strtok_r(NULL, " ", &tok);
+  if (arg == NULL) {
+    term_println(_e_missing_port);
+    return RET_ERR;
+  }
+  port = atoi(arg);
+  
+  if (wifi_tcp_connect(host, port)) {
+    term_print("connected to ");
+    term_print(host);
+    term_print(":");
+    term_println(port, DEC);
+    return RET_IO;
+  } else { 
+    term_println("connection failed");
+    return RET_ERR;
+  }
 }
 
 //////////////////////////////////////////////////////////////////////////////
-// Help
+// Wifi Connect
 //////////////////////////////////////////////////////////////////////////////
 
-boolean exec_help(char * tok) {
-  term_println("c ssid pass   connect to WPA network");
-  term_println("h|help        print help");
-  term_println("i             print info");
-  term_println("s             scan for wireless networks");
-  return true;
+uint8_t exec_wifi_connect(char * tok) {
+  char * arg;
+  const char * ssid;
+  const char * password;
+
+  // Parse SSID
+  arg = strtok_r(NULL, " ", &tok);
+  if (arg == NULL) {
+    term_println(_e_missing_ssid);
+    return RET_ERR;
+  }
+  ssid = arg;
+
+  // Parse password
+  arg = strtok_r(NULL, " ", &tok);
+  if (arg == NULL) {
+    term_println(_e_missing_password);
+    return RET_ERR;
+  }
+  password = arg;
+
+  wifi_connect(ssid, password);
+  return RET_OK;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// Wifi Scan
+//////////////////////////////////////////////////////////////////////////////
+
+uint8_t exec_wifi_scan(char * tok) {
+  wifi_scan();
+  return RET_OK;
 }
 
 //////////////////////////////////////////////////////////////////////////////
 // Command Dispatch
 //////////////////////////////////////////////////////////////////////////////
 
-void process_command() {
-  boolean ok = false;
+uint8_t process_command() {
   char * tok = NULL;
   const char * command_name = strtok_r(_command, " ", &tok);
+
+  uint8_t ret = RET_ERR;
   if (strlen(_command) == 0) {
-    ok = true;
-  } else if (strcmp(command_name, CMD_CONNECT) == 0) {
-    ok = exec_connect(tok);
+    ret = RET_OK;
   } else if (strcmp(command_name, CMD_HELP) == 0
     || strcmp(command_name, CMD_HELP2) == 0) {
-    ok = exec_help(tok);
+    ret = exec_help(tok);
   } else if (strcmp(command_name, CMD_INFO) == 0) {
-    ok = exec_info(tok);
-  } else if (strcmp(command_name, CMD_SCAN) == 0) {
-    ok = exec_scan(tok);
+    ret = exec_info(tok);
+  } else if (strcmp(command_name, CMD_TCP_CONNECT) == 0) {
+    ret = exec_tcp_connect(tok);
+  } else if (strcmp(command_name, CMD_WIFI_CONNECT) == 0) {
+    ret = exec_wifi_connect(tok);
+  } else if (strcmp(command_name, CMD_WIFI_SCAN) == 0) {
+    ret = exec_wifi_scan(tok);
   } else {
     term_print(_e_invalid_command);
     term_println(_command);
   }
 
-  if (ok) {
-    term_println("= ok");
-  } else {
-    term_println("= err");
+  switch (ret) {
+    case RET_OK:
+      term_println("= ok");
+      term_serial.flush();
+      break;
+    case RET_ERR:
+      term_println("= err");
+      term_serial.flush();
+      break;
+    case RET_IO:
+      // Print nothing, program is handling IO
+      break;
   }
-  term_serial.flush();
+ 
+  return ret;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -175,6 +242,11 @@ void cli_init() {
 }
 
 void cli_loop() {
+  // Yield to other loopers that consume keys
+  if (wifi_tcp_is_connected()) {
+    return;
+  }
+  
   while (term_serial && term_serial.available()) {
     char c = term_serial.read();
     if (ECHO) {
@@ -186,16 +258,19 @@ void cli_loop() {
       continue;
     }
 
+    boolean prompt = true;
     if (c == '\r' || c == '\n') {
       _command[_command_index] = 0;
-      process_command();
+      prompt = process_command() != RET_IO;
     } else {
       term_println("command too long");
       term_println("= err");
     }
 
     clear_command();
-    term_print("> ");
+    if (prompt) {
+      term_print("> ");
+    }
   }
 }
 

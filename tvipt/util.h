@@ -24,4 +24,18 @@ inline uint16_t stream_copy(Stream & src, Stream & dst, uint16_t max_bytes) {
   return i;
 }
 
+// Copy text returning true if the break char is read from src, false otherwise
+inline bool stream_copy_breakable(Stream & src, Stream & dst, uint16_t max_bytes, const char break_char) {
+  for (uint16_t i = 0; i < max_bytes; i++) {
+    if (src.available()) {
+      char c = src.read();
+      if (c == break_char) {
+        return true;
+      }
+      dst.write(c);
+    }
+  }
+  return false;
+}
+
 #endif

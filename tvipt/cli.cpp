@@ -2,6 +2,8 @@
 #include "cli.h"
 #include "wifi.h"
 #include "term.h"
+#include "ssh.h"
+#include "tcp.h"
 
 //////////////////////////////////////////////////////////////////////////////
 // Commands
@@ -10,6 +12,7 @@
 #define CMD_HELP          "h"
 #define CMD_HELP2         "help"
 #define CMD_INFO          "i"
+#define CMD_SSH_CONNECT   "ssh"
 #define CMD_TCP_CONNECT   "tcp"
 #define CMD_WIFI_CONNECT  "c"
 #define CMD_WIFI_SCAN     "s"
@@ -80,8 +83,9 @@ uint8_t exec_help(char * tok) {
   term_println("c ssid pass     connect to WPA network");
   term_println("h|help          print help");
   term_println("i               print info");
-  term_println("tcp host port   open TCP connection");
   term_println("s               scan for wireless networks");
+  term_println("ssh host        open SSH connection");
+  term_println("tcp host port   open TCP connection");
   return RET_OK;
 }
 
@@ -89,7 +93,7 @@ uint8_t exec_help(char * tok) {
 // Info
 //////////////////////////////////////////////////////////////////////////////
 
-uint8_t exec_info(char * tok) {
+uint8_t exec_info(char * tok) {   
   // Wifi
   
   struct wifi_info w_info;
@@ -113,6 +117,31 @@ uint8_t exec_info(char * tok) {
 
   return RET_OK;
 }
+
+//////////////////////////////////////////////////////////////////////////////
+// SSH Connect
+//////////////////////////////////////////////////////////////////////////////
+
+uint8_t exec_ssh_connect(char * tok) {
+  char * arg;
+  const char * host;
+  
+  // Parse host
+  arg = strtok_r(NULL, " ", &tok);
+  if (arg == NULL) {
+    term_println(_e_missing_host);
+    return RET_ERR;
+  }
+  host = arg;
+
+  if (ssh_connect(host)) {
+    return RET_IO;
+  } else { 
+    term_println("connection failed");
+    return RET_ERR;
+  }
+}
+
 
 //////////////////////////////////////////////////////////////////////////////
 // TCP Connect
@@ -139,11 +168,7 @@ uint8_t exec_tcp_connect(char * tok) {
   }
   port = atoi(arg);
   
-  if (wifi_tcp_connect(host, port)) {
-    term_print("connected to ");
-    term_print(host);
-    term_print(":");
-    term_println(port, DEC);
+  if (tcp_connect(host, port)) {
     return RET_IO;
   } else { 
     term_println("connection failed");
@@ -205,6 +230,8 @@ uint8_t process_command() {
     ret = exec_help(tok);
   } else if (strcmp(command_name, CMD_INFO) == 0) {
     ret = exec_info(tok);
+  } else if (strcmp(command_name, CMD_SSH_CONNECT) == 0) {
+    ret = exec_ssh_connect(tok);
   } else if (strcmp(command_name, CMD_TCP_CONNECT) == 0) {
     ret = exec_tcp_connect(tok);
   } else if (strcmp(command_name, CMD_WIFI_CONNECT) == 0) {
@@ -242,8 +269,8 @@ void cli_init() {
 }
 
 void cli_loop() {
-  // Yield to other loopers that consume keys
-  if (wifi_tcp_is_connected()) {
+  // Don't consume keys if commands we're running are handling IO
+  if (wifi_has_loop_callback()) {
     return;
   }
   

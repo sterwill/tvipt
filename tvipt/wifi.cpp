@@ -4,10 +4,9 @@
 #include "term.h"
 #include "util.h"
 
-#define TCP_COPY_LIMIT 512 
-
 static struct wifi_info _info;
 static WiFiClient _client;
+static void (*_loop_cb)(WiFiClient &);
 
 void wifi_init() {
   WiFi.setPins(8, 7, 4, 2);
@@ -15,10 +14,6 @@ void wifi_init() {
   _info.status = WL_IDLE_STATUS;
   _info.ssid[0] = '\0';
   _info.pass[0] = '\0';
-}
-
-void on_wifi_idle(int old_wifi_status) {
-  // WiFi.begin(ssid, pass);
 }
 
 void on_wifi_connected(int old_wifi_status) {
@@ -32,19 +27,13 @@ void on_wifi_connected(int old_wifi_status) {
   }
 }
 
-void _wifi_tcp_loop() {
-  if (_client.connected()) {
-    stream_copy(term_serial, _client, TCP_COPY_LIMIT);
-    stream_copy(_client, term_serial, TCP_COPY_LIMIT);
-  }
+void _wifi_ssh_loop() {
+  
 }
 
 void wifi_loop() {
   int new_status = WiFi.status();
   switch (new_status) {
-    case WL_IDLE_STATUS:
-      on_wifi_idle(new_status);
-      break;
     case WL_CONNECTED:
       on_wifi_connected(new_status);
       break;
@@ -54,7 +43,9 @@ void wifi_loop() {
   _info.netmask = WiFi.subnetMask();
   _info.gateway = WiFi.gatewayIP();
 
-  _wifi_tcp_loop();
+  if (_loop_cb != NULL) {
+    _loop_cb(_client);
+  }
 }
 
 void wifi_connect(const char * ssid, const char * pass) {
@@ -134,11 +125,15 @@ const char * wifi_get_encryption_description(int type) {
   }
 }
 
-boolean wifi_tcp_is_connected() {
-  return _client.connected();
+WiFiClient & wifi_get_client() {
+  return _client;
 }
 
-boolean wifi_tcp_connect(const char * host, uint16_t port) {
-  return _client.connect(host, port);
+void wifi_set_loop_callback(void (*loop_cb)(WiFiClient &)) {
+  _loop_cb = loop_cb;
+}
+
+bool wifi_has_loop_callback() {
+  return _loop_cb != NULL;
 }
 

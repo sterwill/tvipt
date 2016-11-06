@@ -21,9 +21,9 @@ void wifi_get_info(struct wifi_info * info);
 void wifi_scan();
 const char * wifi_get_status_description(int status);
 const char * wifi_get_encryption_description(int type);
-
-boolean wifi_tcp_is_connected();
-boolean wifi_tcp_connect(const char * host, uint16_t port);
+WiFiClient & wifi_get_client();
+void wifi_set_loop_callback(void (*loop_cb)(WiFiClient &));
+bool wifi_has_loop_callback();
 
 #endif
 

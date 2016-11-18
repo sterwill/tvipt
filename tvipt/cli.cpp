@@ -12,6 +12,7 @@
 #define CMD_HELP          "h"
 #define CMD_HELP2         "help"
 #define CMD_INFO          "i"
+#define CMD_RESET         "reset"
 #define CMD_SSH_CONNECT   "ssh"
 #define CMD_TCP_CONNECT   "tcp"
 #define CMD_WIFI_CONNECT  "c"
@@ -83,6 +84,7 @@ uint8_t exec_help(char * tok) {
   term_println("c ssid pass     connect to WPA network");
   term_println("h|help          print help");
   term_println("i               print info");
+  term_println("reset           uptime goes to 0");
   term_println("s               scan for wireless networks");
   term_println("ssh host        open SSH connection");
   term_println("tcp host port   open TCP connection");
@@ -115,6 +117,19 @@ uint8_t exec_info(char * tok) {
   w_info.gateway.printTo(term_serial);
   term_println("");
 
+  return RET_OK;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// Reset
+//////////////////////////////////////////////////////////////////////////////
+
+uint8_t exec_reset(char * tok) {
+  term_println("starting over!");
+  term_serial.flush();
+  NVIC_SystemReset();
+  
+  // Never happens!
   return RET_OK;
 }
 
@@ -230,6 +245,8 @@ uint8_t process_command() {
     ret = exec_help(tok);
   } else if (strcmp(command_name, CMD_INFO) == 0) {
     ret = exec_info(tok);
+  } else if (strcmp(command_name, CMD_RESET) == 0) {
+    ret = exec_reset(tok);
   } else if (strcmp(command_name, CMD_SSH_CONNECT) == 0) {
     ret = exec_ssh_connect(tok);
   } else if (strcmp(command_name, CMD_TCP_CONNECT) == 0) {

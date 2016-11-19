@@ -5,6 +5,11 @@
 void term_init() {
   dbg_serial.begin(19200);
   term_serial.begin(19200);
+  term_serial.setTimeout(-1);
+}
+
+size_t term_write(const uint8_t * buf, size_t size) {
+  return term_serial.write(buf, size);
 }
 
 void term_print(const char * val) {

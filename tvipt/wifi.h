@@ -22,7 +22,7 @@ void wifi_scan();
 const char * wifi_get_status_description(int status);
 const char * wifi_get_encryption_description(int type);
 WiFiClient & wifi_get_client();
-void wifi_set_loop_callback(void (*loop_cb)(WiFiClient &));
+void wifi_set_loop_callback(void (*loop_cb)(void));
 bool wifi_has_loop_callback();
 
 #endif

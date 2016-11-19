@@ -6,14 +6,16 @@
 #define TCP_COPY_LIMIT 512 
 #define BREAK_CHAR '\0'
 
-void tcp_loop_cb(WiFiClient & client) {
-  if (client.connected()) {
-    if (stream_copy_breakable(term_serial, client, TCP_COPY_LIMIT, BREAK_CHAR)) {
+static WiFiClient _client;
+
+void tcp_loop_cb() {
+  if (_client.connected()) {
+    if (stream_copy_breakable(term_serial, _client, TCP_COPY_LIMIT, BREAK_CHAR)) {
       // User wants to stop connection
-      client.stop();
+      _client.stop();
       return;
     }
-    stream_copy(client, term_serial, TCP_COPY_LIMIT);
+    stream_copy(_client, term_serial, TCP_COPY_LIMIT);
   } else {
     term_println("");
     term_println("connection closed");
@@ -22,8 +24,7 @@ void tcp_loop_cb(WiFiClient & client) {
 }
 
 bool tcp_connect(const char * host, uint16_t port) {
-  WiFiClient & client = wifi_get_client();
-  if (!client.connect(host, port)) {
+  if (!_client.connect(host, port)) {
     return false;
   }
  

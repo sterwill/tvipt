@@ -5,8 +5,7 @@
 #include "util.h"
 
 static struct wifi_info _info;
-static WiFiClient _client;
-static void (*_loop_cb)(WiFiClient &);
+static void (*_loop_cb)();
 
 void wifi_init() {
   WiFi.setPins(8, 7, 4, 2);
@@ -44,7 +43,7 @@ void wifi_loop() {
   _info.gateway = WiFi.gatewayIP();
 
   if (_loop_cb != NULL) {
-    _loop_cb(_client);
+    _loop_cb();
   }
 }
 
@@ -125,11 +124,7 @@ const char * wifi_get_encryption_description(int type) {
   }
 }
 
-WiFiClient & wifi_get_client() {
-  return _client;
-}
-
-void wifi_set_loop_callback(void (*loop_cb)(WiFiClient &)) {
+void wifi_set_loop_callback(void (*loop_cb)()) {
   _loop_cb = loop_cb;
 }
 

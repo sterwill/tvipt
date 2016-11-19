@@ -11,6 +11,7 @@
 
 void term_init();
 void term_loop();
+size_t term_write(const uint8_t * buf, size_t size);
 void term_print(const char * val);
 void term_print(long val, int format = DEC);
 void term_println(const char * val);

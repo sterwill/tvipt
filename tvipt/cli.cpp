@@ -2,21 +2,22 @@
 #include "cli.h"
 #include "wifi.h"
 #include "term.h"
-#include "ssh.h"
 #include "tcp.h"
+#include "telnets.h"
 
 //////////////////////////////////////////////////////////////////////////////
 // Commands
 //////////////////////////////////////////////////////////////////////////////
 
-#define CMD_HELP          "h"
-#define CMD_HELP2         "help"
-#define CMD_INFO          "i"
-#define CMD_RESET         "reset"
-#define CMD_SSH_CONNECT   "ssh"
-#define CMD_TCP_CONNECT   "tcp"
-#define CMD_WIFI_CONNECT  "c"
-#define CMD_WIFI_SCAN     "s"
+#define CMD_HELP                    "h"
+#define CMD_HELP2                   "help"
+#define CMD_INFO                    "i"
+#define CMD_RESET                   "reset"
+#define CMD_TCP_CONNECT             "tcp"
+#define CMD_TELNETS_CONNECT         "t"
+#define CMD_TELNETS_CONNECT_DEFAULT "o"
+#define CMD_WIFI_CONNECT            "c"
+#define CMD_WIFI_SCAN               "s"
 
 //////////////////////////////////////////////////////////////////////////////
 // Command Executor Return Values
@@ -84,10 +85,11 @@ uint8_t exec_help(char * tok) {
   term_println("c ssid pass     connect to WPA network");
   term_println("h|help          print help");
   term_println("i               print info");
+  term_println("o               open Telnet (SSL) connection to the default host");
   term_println("reset           uptime goes to 0");
   term_println("s               scan for wireless networks");
-  term_println("ssh host        open SSH connection");
   term_println("tcp host port   open TCP connection");
+  term_println("t host port     open Telnet (SSL) connection");
   return RET_OK;
 }
 
@@ -134,31 +136,6 @@ uint8_t exec_reset(char * tok) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
-// SSH Connect
-//////////////////////////////////////////////////////////////////////////////
-
-uint8_t exec_ssh_connect(char * tok) {
-  char * arg;
-  const char * host;
-  
-  // Parse host
-  arg = strtok_r(NULL, " ", &tok);
-  if (arg == NULL) {
-    term_println(_e_missing_host);
-    return RET_ERR;
-  }
-  host = arg;
-
-  if (ssh_connect(host)) {
-    return RET_IO;
-  } else { 
-    term_println("connection failed");
-    return RET_ERR;
-  }
-}
-
-
-//////////////////////////////////////////////////////////////////////////////
 // TCP Connect
 //////////////////////////////////////////////////////////////////////////////
 
@@ -191,6 +168,48 @@ uint8_t exec_tcp_connect(char * tok) {
   }
 }
 
+
+//////////////////////////////////////////////////////////////////////////////
+// Telnet over SSL
+//////////////////////////////////////////////////////////////////////////////
+
+uint8_t exec_telnets_connect(char * tok) {
+  char * arg;
+  const char * host;
+  uint16_t port;
+  
+  // Parse host
+  arg = strtok_r(NULL, " ", &tok);
+  if (arg == NULL) {
+    term_println(_e_missing_host);
+    return RET_ERR;
+  }
+  host = arg;
+
+  // Parse port
+  arg = strtok_r(NULL, " ", &tok);
+  if (arg == NULL) {
+    term_println(_e_missing_port);
+    return RET_ERR;
+  }
+  port = atoi(arg);
+  
+  if (telnets_connect(host, port, NULL)) {
+    return RET_IO;
+  } else { 
+    term_println("connection failed");
+    return RET_ERR;
+  }
+}
+
+uint8_t exec_telnets_connect_default(char * tok) {
+  if (telnets_connect("tinfig.com", 992, "sterwill")) {
+    return RET_IO;
+  } else { 
+    term_println("connection failed");
+    return RET_ERR;
+  }
+}
 //////////////////////////////////////////////////////////////////////////////
 // Wifi Connect
 //////////////////////////////////////////////////////////////////////////////
@@ -247,10 +266,12 @@ uint8_t process_command() {
     ret = exec_info(tok);
   } else if (strcmp(command_name, CMD_RESET) == 0) {
     ret = exec_reset(tok);
-  } else if (strcmp(command_name, CMD_SSH_CONNECT) == 0) {
-    ret = exec_ssh_connect(tok);
   } else if (strcmp(command_name, CMD_TCP_CONNECT) == 0) {
     ret = exec_tcp_connect(tok);
+  } else if (strcmp(command_name, CMD_TELNETS_CONNECT) == 0) {
+    ret = exec_telnets_connect(tok);
+  } else if (strcmp(command_name, CMD_TELNETS_CONNECT_DEFAULT) == 0) {
+    ret = exec_telnets_connect_default(tok);
   } else if (strcmp(command_name, CMD_WIFI_CONNECT) == 0) {
     ret = exec_wifi_connect(tok);
   } else if (strcmp(command_name, CMD_WIFI_SCAN) == 0) {

@@ -8,6 +8,8 @@ tvipt was developed and tested with the Adafruit Feather M0 + ATWINC1500.  Ardui
 - "Adafruit SAMD Boards" >= 1.0.13 (or other SAMD board support)
 - WiFi101 library >= 0.9.1
 
+[![TeleVideo Personal Terminal](https://raw.github.com/sterwill/tvipt/master/tvipt-small.jpg)](https://raw.github.com/sterwill/tvipt/master/tvipt.jpg)
+
 # How it Works
 
 The terminal connects to the controller board using just 3 wires: GND, RX, TX.  The data protoocl the terminal speaks, RS-232, uses differential signalling with positive and negative voltages way too large to feed directly into the ATSAMD21 microcontroller.  An RS-232 level shifter is used to convert the signals to a safe 3.3V, and those are connected to the RX and TX pins on the ATSAMD21.  The tvipt software does the rest.

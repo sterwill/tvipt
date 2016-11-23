@@ -17,8 +17,8 @@ void tcp_loop_cb() {
     }
     stream_copy(_client, term_serial, TCP_COPY_LIMIT);
   } else {
-    term_println("");
-    term_println("connection closed");
+    term_writeln("");
+    term_writeln("connection closed");
     wifi_set_loop_callback(NULL);
   }
 }
@@ -28,9 +28,9 @@ bool tcp_connect(const char * host, uint16_t port) {
     return false;
   }
  
-  term_print("connected to ");
-  term_print(host);
-  term_print(":");
+  term_write("connected to ");
+  term_write(host);
+  term_write(":");
   term_println(port, DEC);
 
   wifi_set_loop_callback(tcp_loop_cb);

@@ -50,8 +50,8 @@ void telnets_loop_cb() {
       busybox_handle_net_input(_buf, len);
     }
   } else {
-    term_println("");
-    term_println("connection closed");
+    term_write("");
+    term_writeln("connection closed");
     wifi_set_loop_callback(NULL);
   }
 }
@@ -61,9 +61,9 @@ bool telnets_connect(const char * host, uint16_t port, const char * username) {
     return false;
   }
  
-  term_print("connected to ");
-  term_print(host);
-  term_print(":");
+  term_write("connected to ");
+  term_write(host);
+  term_write(":");
   term_println(port, DEC);
 
   busybox_init(WIDTH, HEIGHT, TERM, &_client, username);

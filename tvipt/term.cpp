@@ -45,32 +45,36 @@ size_t term_write(const uint8_t * buf, size_t size) {
   return term_serial.write(buf, size);
 }
 
-void term_print(const char * val) {
-  term_serial.print(val);
+size_t term_write(const char * buf, size_t size) {
+  return term_serial.write(buf, size);
+}
+
+void term_write(const char * val) {
+  term_serial.write(val);
+}
+
+void term_writeln(const char * val) {
+  term_serial.write(val);
+  term_serial.write("\r\n");
+}
+
+void term_write_masked(const char * val) {
+  while (*val++ != '\0') {
+    term_serial.write("*");
+  }
+}
+
+void term_writeln_masked(const char * val) {
+  term_write_masked(val);
+  term_serial.write("\r\n");
 }
 
 void term_print(long val, int format) {
   term_serial.print(val, format);
 }
 
-void term_println(const char * val) {
-  term_serial.write(val);
-  term_serial.write("\r\n");
-}
-
 void term_println(long val, int format) {
   term_serial.print(val, format);
-  term_serial.write("\r\n");
-}
-
-void term_print_masked(const char * val) {
-  while (*val++ != '\0') {
-    term_serial.write("*");
-  }
-}
-
-void term_println_masked(const char * val) {
-  term_print_masked(val);
   term_serial.write("\r\n");
 }
 

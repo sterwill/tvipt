@@ -69,17 +69,17 @@ void wifi_get_info(struct wifi_info * info) {
 void wifi_scan() {
   int count = WiFi.scanNetworks();
   if (count == -1) {
-    term_println("scan error");
+    term_writeln("scan error");
     return;
   }
 
   for (int i = 0; i < count; i++) {
-    term_print("\"");
-    term_print(WiFi.SSID(i));
-    term_print("\" ");
-    term_print(WiFi.RSSI(i));
-    term_print(" dBm, ");
-    term_println(wifi_get_encryption_description(WiFi.encryptionType(i)));
+    term_write("\"");
+    term_write(WiFi.SSID(i));
+    term_write("\" ");
+    term_print(WiFi.RSSI(i), DEC);
+    term_write(" dBm, ");
+    term_writeln(wifi_get_encryption_description(WiFi.encryptionType(i)));
     Serial.flush();
   }
 }

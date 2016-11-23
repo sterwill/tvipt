@@ -7,32 +7,63 @@
 #include "keyboard_test.h"
 
 //////////////////////////////////////////////////////////////////////////////
-// Commands
+// Internal Data
 //////////////////////////////////////////////////////////////////////////////
 
-#define CMD_HELP                    "h"
-#define CMD_HELP2                   "help"
-#define CMD_INFO                    "i"
-#define CMD_KEYBOARD_TEST           "keytest"
-#define CMD_RESET                   "reset"
-#define CMD_TCP_CONNECT             "tcp"
-#define CMD_TELNETS_CONNECT         "t"
-#define CMD_TELNETS_CONNECT_DEFAULT "o"
-#define CMD_WIFI_CONNECT            "c"
-#define CMD_WIFI_SCAN               "s"
+static uint64_t _uptime;
+static unsigned long _last_millis = 0;
 
 //////////////////////////////////////////////////////////////////////////////
 // Command Executor Return Values
 //////////////////////////////////////////////////////////////////////////////
 
-// Command completed successfully; prompt for another
-#define RET_OK    0
+enum command_status {
+  // Command has not been run or has not finished
+  CMD_UNKNOWN,
+  
+  // Command completed successfully; prompt for another
+  CMD_OK,
 
-// Command failed with some error; prompt for another
-#define RET_ERR   1
+  // Command failed with some error; prompt for another
+  CMD_ERR,
 
-// Command is running and is handling IO
-#define RET_IO    2
+  // Command is running and is handling IO  
+  CMD_IO
+};
+
+//////////////////////////////////////////////////////////////////////////////
+// Commands
+//////////////////////////////////////////////////////////////////////////////
+
+command_status cmd_help(char * tok);
+command_status cmd_info(char * tok);
+command_status cmd_wifi_connect(char * tok);
+command_status cmd_keyboard_test(char * tok);
+command_status cmd_telnets_connect_default(char * tok);
+command_status cmd_reset(char * tok);
+command_status cmd_wifi_scan(char * tok);
+command_status cmd_tcp_connect(char * tok);
+command_status cmd_telnets_connect(char * tok);
+
+struct command {
+  const char * name;
+  const char * syntax;
+  const char * help;
+  command_status (* func)(char * tok);
+};
+
+// Help is printed in this order
+struct command _commands[] = {
+  {"h",     "h",              "print this help",                                  cmd_help},
+  {"i",     "i",              "print system info",                                cmd_info},
+  {"j",     "j ssid pass",    "join a WPA wireless network",                      cmd_wifi_connect},
+  {"keys",  "keys",           "keyboard input test",                              cmd_keyboard_test},
+  {"o",     "o",              "open Telnet/SSL connection to the default host",   cmd_telnets_connect_default},
+  {"reset", "reset",          "uptime goes to 0",                                 cmd_reset},
+  {"scan",  "scan",           "scan for wireless networks",                       cmd_wifi_scan},
+  {"tcp",   "tcp host port",  "open TCP connection",                              cmd_tcp_connect},
+  {"tel",   "tel host port",  "open Telnet/SSL connection",                       cmd_telnets_connect},
+};
 
 //////////////////////////////////////////////////////////////////////////////
 // Parse Utilities
@@ -83,58 +114,104 @@ static const char * _e_missing_port = "missing port";
 // Help
 //////////////////////////////////////////////////////////////////////////////
 
-uint8_t exec_help(char * tok) {
-  term_println("c ssid pass     connect to WPA network");
-  term_println("h|help          print help");
-  term_println("i               print info");
-  term_println("keytest         keyboard test");
-  term_println("o               open Telnet (SSL) connection to the default host");
-  term_println("reset           uptime goes to 0");
-  term_println("s               scan for wireless networks");
-  term_println("tcp host port   open TCP connection");
-  term_println("t host port     open Telnet (SSL) connection");
-  return RET_OK;
+command_status cmd_help(char * tok) {
+  // Measure syntax column for padding
+  uint8_t max_syntax_width = 0;
+  for (int i = 0; i < (sizeof(_commands) / sizeof(struct command)); i++) {
+    max_syntax_width = max(max_syntax_width, strlen(_commands[i].syntax));
+  }
+
+  for (int i = 0; i < (sizeof(_commands) / sizeof(struct command)); i++) {
+    // Syntax with padding
+    term_write(_commands[i].syntax, strlen(_commands[i].syntax));
+    for (int j = strlen(_commands[i].syntax); j < max_syntax_width; j++) {
+      term_write(' ');
+    }
+
+    // Separator
+    term_write("    ");
+    
+    // Help column (might wrap if really long)
+    term_writeln(_commands[i].help);
+  }
+
+  return CMD_OK;
 }
 
 //////////////////////////////////////////////////////////////////////////////
 // Info
 //////////////////////////////////////////////////////////////////////////////
 
-uint8_t exec_info(char * tok) {   
+#define SECOND_MILLIS (1000)
+#define MINUTE_MILLIS (60 * SECOND_MILLIS)
+#define HOUR_MILLIS   (60 * MINUTE_MILLIS)
+#define DAY_MILLIS    (24 * HOUR_MILLIS)
+
+void print_time(uint64_t elapsed_ms) {
+  uint16_t days = elapsed_ms / DAY_MILLIS;
+  term_print(days, DEC);
+  term_write(" days, ");
+  elapsed_ms -= days * DAY_MILLIS;
+
+  uint8_t hours = elapsed_ms / HOUR_MILLIS;
+  term_print(hours, DEC);
+  term_write(" hours, ");
+  elapsed_ms -= hours * HOUR_MILLIS;
+
+  uint8_t minutes = elapsed_ms / MINUTE_MILLIS;
+  term_print(minutes, DEC);
+  term_write(" minutes, ");
+  elapsed_ms -= minutes * MINUTE_MILLIS;
+
+  uint8_t seconds = elapsed_ms / SECOND_MILLIS;
+  term_print(seconds, DEC);
+  term_write(" seconds, ");
+  elapsed_ms -= seconds * SECOND_MILLIS;
+
+  term_print(elapsed_ms, DEC);
+  term_write(" milliseconds");
+}
+
+command_status cmd_info(char * tok) {   
+  // System
+  term_write("uptime: ");
+  print_time(_uptime);
+  term_writeln("");
+  
   // Wifi
   
   struct wifi_info w_info;
   wifi_get_info(&w_info);
   
-  term_print("wifi status: ");
-  term_println(wifi_get_status_description(w_info.status));
-  term_print("wifi ssid: ");
-  term_println(w_info.ssid);
-  term_print("wifi pass: ");
-  term_println_masked(w_info.pass);
-  term_print("wifi address: ");
+  term_write("wifi status: ");
+  term_writeln(wifi_get_status_description(w_info.status));
+  term_write("wifi ssid: ");
+  term_writeln(w_info.ssid);
+  term_write("wifi pass: ");
+  term_writeln_masked(w_info.pass);
+  term_write("wifi address: ");
   w_info.address.printTo(term_serial);
-  term_println("");
-  term_print("wifi netmask: ");
+  term_writeln("");
+  term_write("wifi netmask: ");
   w_info.netmask.printTo(term_serial);
-  term_println("");
-  term_print("wifi gateway: ");
+  term_writeln("");
+  term_write("wifi gateway: ");
   w_info.gateway.printTo(term_serial);
-  term_println("");
+  term_writeln("");
 
-  return RET_OK;
+  return CMD_OK;
 }
 
 //////////////////////////////////////////////////////////////////////////////
 // Keyboard Test
 //////////////////////////////////////////////////////////////////////////////
 
-uint8_t exec_keyboard_test(char * tok) {
+command_status cmd_keyboard_test(char * tok) {
   if (keyboard_test()) {
-    return RET_IO;
+    return CMD_IO;
   } else {
-    term_println("keyboard test failed");
-    return RET_ERR;
+    term_writeln("keyboard test failed");
+    return CMD_ERR;
   }
 }
 
@@ -142,20 +219,20 @@ uint8_t exec_keyboard_test(char * tok) {
 // Reset
 //////////////////////////////////////////////////////////////////////////////
 
-uint8_t exec_reset(char * tok) {
-  term_println("starting over!");
+command_status cmd_reset(char * tok) {
+  term_writeln("starting over!");
   term_serial.flush();
   NVIC_SystemReset();
   
   // Never happens!
-  return RET_OK;
+  return CMD_OK;
 }
 
 //////////////////////////////////////////////////////////////////////////////
 // TCP Connect
 //////////////////////////////////////////////////////////////////////////////
 
-uint8_t exec_tcp_connect(char * tok) {
+command_status cmd_tcp_connect(char * tok) {
   char * arg;
   const char * host;
   uint16_t port;
@@ -163,24 +240,24 @@ uint8_t exec_tcp_connect(char * tok) {
   // Parse host
   arg = strtok_r(NULL, " ", &tok);
   if (arg == NULL) {
-    term_println(_e_missing_host);
-    return RET_ERR;
+    term_writeln(_e_missing_host);
+    return CMD_ERR;
   }
   host = arg;
 
   // Parse port
   arg = strtok_r(NULL, " ", &tok);
   if (arg == NULL) {
-    term_println(_e_missing_port);
-    return RET_ERR;
+    term_writeln(_e_missing_port);
+    return CMD_ERR;
   }
   port = atoi(arg);
   
   if (tcp_connect(host, port)) {
-    return RET_IO;
+    return CMD_IO;
   } else { 
-    term_println("connection failed");
-    return RET_ERR;
+    term_writeln("connection failed");
+    return CMD_ERR;
   }
 }
 
@@ -189,7 +266,7 @@ uint8_t exec_tcp_connect(char * tok) {
 // Telnet over SSL
 //////////////////////////////////////////////////////////////////////////////
 
-uint8_t exec_telnets_connect(char * tok) {
+command_status cmd_telnets_connect(char * tok) {
   char * arg;
   const char * host;
   uint16_t port;
@@ -197,40 +274,41 @@ uint8_t exec_telnets_connect(char * tok) {
   // Parse host
   arg = strtok_r(NULL, " ", &tok);
   if (arg == NULL) {
-    term_println(_e_missing_host);
-    return RET_ERR;
+    term_writeln(_e_missing_host);
+    return CMD_ERR;
   }
   host = arg;
 
   // Parse port
   arg = strtok_r(NULL, " ", &tok);
   if (arg == NULL) {
-    term_println(_e_missing_port);
-    return RET_ERR;
+    term_writeln(_e_missing_port);
+    return CMD_ERR;
   }
   port = atoi(arg);
   
   if (telnets_connect(host, port, NULL)) {
-    return RET_IO;
+    return CMD_IO;
   } else { 
-    term_println("connection failed");
-    return RET_ERR;
+    term_writeln("connection failed");
+    return CMD_ERR;
   }
 }
 
-uint8_t exec_telnets_connect_default(char * tok) {
+command_status cmd_telnets_connect_default(char * tok) {
   if (telnets_connect("tinfig.com", 992, "sterwill")) {
-    return RET_IO;
+    return CMD_IO;
   } else { 
-    term_println("connection failed");
-    return RET_ERR;
+    term_writeln("connection failed");
+    return CMD_ERR;
   }
 }
+
 //////////////////////////////////////////////////////////////////////////////
 // Wifi Connect
 //////////////////////////////////////////////////////////////////////////////
 
-uint8_t exec_wifi_connect(char * tok) {
+command_status cmd_wifi_connect(char * tok) {
   char * arg;
   const char * ssid;
   const char * password;
@@ -238,82 +316,76 @@ uint8_t exec_wifi_connect(char * tok) {
   // Parse SSID
   arg = strtok_r(NULL, " ", &tok);
   if (arg == NULL) {
-    term_println(_e_missing_ssid);
-    return RET_ERR;
+    term_writeln(_e_missing_ssid);
+    return CMD_ERR;
   }
   ssid = arg;
 
   // Parse password
   arg = strtok_r(NULL, " ", &tok);
   if (arg == NULL) {
-    term_println(_e_missing_password);
-    return RET_ERR;
+    term_writeln(_e_missing_password);
+    return CMD_ERR;
   }
   password = arg;
 
   wifi_connect(ssid, password);
-  return RET_OK;
+  return CMD_OK;
 }
 
 //////////////////////////////////////////////////////////////////////////////
 // Wifi Scan
 //////////////////////////////////////////////////////////////////////////////
 
-uint8_t exec_wifi_scan(char * tok) {
+command_status cmd_wifi_scan(char * tok) {
   wifi_scan();
-  return RET_OK;
+  return CMD_OK;
 }
 
 //////////////////////////////////////////////////////////////////////////////
 // Command Dispatch
 //////////////////////////////////////////////////////////////////////////////
 
-uint8_t process_command() {
+command_status process_command() {
   char * tok = NULL;
   const char * command_name = strtok_r(_command, " ", &tok);
 
-  uint8_t ret = RET_ERR;
+  command_status status = CMD_UNKNOWN;
+  
   if (strlen(_command) == 0) {
-    ret = RET_OK;
-  } else if (strcmp(command_name, CMD_HELP) == 0
-    || strcmp(command_name, CMD_HELP2) == 0) {
-    ret = exec_help(tok);
-  } else if (strcmp(command_name, CMD_INFO) == 0) {
-    ret = exec_info(tok);
-  } else if (strcmp(command_name, CMD_KEYBOARD_TEST) == 0) {
-    ret = exec_keyboard_test(tok);
-  } else if (strcmp(command_name, CMD_RESET) == 0) {
-    ret = exec_reset(tok);
-  } else if (strcmp(command_name, CMD_TCP_CONNECT) == 0) {
-    ret = exec_tcp_connect(tok);
-  } else if (strcmp(command_name, CMD_TELNETS_CONNECT) == 0) {
-    ret = exec_telnets_connect(tok);
-  } else if (strcmp(command_name, CMD_TELNETS_CONNECT_DEFAULT) == 0) {
-    ret = exec_telnets_connect_default(tok);
-  } else if (strcmp(command_name, CMD_WIFI_CONNECT) == 0) {
-    ret = exec_wifi_connect(tok);
-  } else if (strcmp(command_name, CMD_WIFI_SCAN) == 0) {
-    ret = exec_wifi_scan(tok);
+    status = CMD_OK;
   } else {
-    term_print(_e_invalid_command);
-    term_println(_command);
+    // Find the matching command by name
+    for (int i = 0; i < (sizeof(_commands) / sizeof(struct command)); i++) {
+      if (strcmp(command_name, _commands[i].name) == 0) {
+        status = _commands[i].func(tok);
+        break;
+      }
+    }
+    
+    // No name matched
+    if (status == CMD_UNKNOWN) {
+      term_write(_e_invalid_command);
+      term_writeln(_command);
+      status = CMD_ERR;
+    }
   }
 
-  switch (ret) {
-    case RET_OK:
-      term_println("= ok");
+  switch (status) {
+    case CMD_OK:
+      term_writeln("= ok");
       term_serial.flush();
       break;
-    case RET_ERR:
-      term_println("= err");
+    case CMD_ERR:
+      term_writeln("= err");
       term_serial.flush();
       break;
-    case RET_IO:
+    case CMD_IO:
       // Print nothing, program is handling IO
       break;
   }
  
-  return ret;
+  return status;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -325,6 +397,11 @@ void cli_init() {
 }
 
 void cli_loop() {
+  // Increase uptime
+  unsigned long now = millis();
+  _uptime += millis() - _last_millis;
+  _last_millis = now;
+  
   // Don't consume keys if commands we're running are handling IO
   if (wifi_has_loop_callback()) {
     return;
@@ -343,17 +420,17 @@ void cli_loop() {
 
     boolean prompt = true;
     if (c == '\r' || c == '\n') {
-      term_println("");
+      term_writeln("");
       _command[_command_index] = 0;
-      prompt = process_command() != RET_IO;
+      prompt = process_command() != CMD_IO;
     } else {
-      term_println("command too long");
-      term_println("= err");
+      term_writeln("command too long");
+      term_writeln("= err");
     }
 
     clear_command();
     if (prompt) {
-      term_print("> ");
+      term_write("> ");
     }
   }
 }

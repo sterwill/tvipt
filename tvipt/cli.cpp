@@ -4,6 +4,7 @@
 #include "term.h"
 #include "tcp.h"
 #include "telnets.h"
+#include "keyboard_test.h"
 
 //////////////////////////////////////////////////////////////////////////////
 // Commands
@@ -12,6 +13,7 @@
 #define CMD_HELP                    "h"
 #define CMD_HELP2                   "help"
 #define CMD_INFO                    "i"
+#define CMD_KEYBOARD_TEST           "keytest"
 #define CMD_RESET                   "reset"
 #define CMD_TCP_CONNECT             "tcp"
 #define CMD_TELNETS_CONNECT         "t"
@@ -85,6 +87,7 @@ uint8_t exec_help(char * tok) {
   term_println("c ssid pass     connect to WPA network");
   term_println("h|help          print help");
   term_println("i               print info");
+  term_println("keytest         keyboard test");
   term_println("o               open Telnet (SSL) connection to the default host");
   term_println("reset           uptime goes to 0");
   term_println("s               scan for wireless networks");
@@ -120,6 +123,19 @@ uint8_t exec_info(char * tok) {
   term_println("");
 
   return RET_OK;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// Keyboard Test
+//////////////////////////////////////////////////////////////////////////////
+
+uint8_t exec_keyboard_test(char * tok) {
+  if (keyboard_test()) {
+    return RET_IO;
+  } else {
+    term_println("keyboard test failed");
+    return RET_ERR;
+  }
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -264,6 +280,8 @@ uint8_t process_command() {
     ret = exec_help(tok);
   } else if (strcmp(command_name, CMD_INFO) == 0) {
     ret = exec_info(tok);
+  } else if (strcmp(command_name, CMD_KEYBOARD_TEST) == 0) {
+    ret = exec_keyboard_test(tok);
   } else if (strcmp(command_name, CMD_RESET) == 0) {
     ret = exec_reset(tok);
   } else if (strcmp(command_name, CMD_TCP_CONNECT) == 0) {
@@ -325,6 +343,7 @@ void cli_loop() {
 
     boolean prompt = true;
     if (c == '\r' || c == '\n') {
+      term_println("");
       _command[_command_index] = 0;
       prompt = process_command() != RET_IO;
     } else {

@@ -191,10 +191,10 @@ void con_escape(void)
   if (bb_got_signal) /* came from line mode... go raw */
     rawmode();
 
-  full_write1_str("\rConsole escape. Commands are:\r"
-      " l go to line mode\r"
-      " c go to character mode\r"
-      " e exit telnet\r");
+  full_write1_str("\r\nConsole escape. Commands are:\r\n"
+      " l go to line mode\r\n"
+      " c go to character mode\r\n"
+      " e exit telnet\r\n");
 
   if (term_serial.readBytes(&b, 1) == -1)
     doexit(EXIT_FAILURE);
@@ -216,7 +216,7 @@ void con_escape(void)
     doexit(EXIT_SUCCESS);
   }
 
-  full_write1_str("continuing...\r");
+  full_write1_str("continuing...\r\n");
 
   if (bb_got_signal)
     cookmode();
@@ -442,13 +442,15 @@ void setConMode(void)
   if (G.telflags & UF_ECHO) {
     if (G.charmode == CHM_TRY) {
       G.charmode = CHM_ON;
-      term_serial.println("\rEntering character mode\rEscape character is '^]'.\r");
+      term_serial.println("Entering character mode");
+      term_serial.println("Escape character is '^]'.");
       rawmode();
     }
   } else {
     if (G.charmode != CHM_OFF) {
       G.charmode = CHM_OFF;
-      term_serial.println("\rEntering line mode\rEscape character is '^C'.\r");
+      term_serial.println("Entering line mode");
+      term_serial.println("Escape character is '^C'.");
       cookmode();
     }
   }

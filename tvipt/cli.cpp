@@ -37,9 +37,8 @@ enum command_status {
 
 command_status cmd_help(char * tok);
 command_status cmd_info(char * tok);
-command_status cmd_wifi_connect(char * tok);
+command_status cmd_wifi_join(char * tok);
 command_status cmd_keyboard_test(char * tok);
-command_status cmd_telnets_connect_default(char * tok);
 command_status cmd_reset(char * tok);
 command_status cmd_wifi_scan(char * tok);
 command_status cmd_tcp_connect(char * tok);
@@ -56,9 +55,8 @@ struct command {
 struct command _commands[] = {
   {"h",     "h",              "print this help",                                  cmd_help},
   {"i",     "i",              "print system info",                                cmd_info},
-  {"j",     "j ssid pass",    "join a WPA wireless network",                      cmd_wifi_connect},
+  {"j",     "j ssid pass",    "join a WPA wireless network",                      cmd_wifi_join},
   {"keys",  "keys",           "keyboard input test",                              cmd_keyboard_test},
-  {"o",     "o",              "open Telnet/SSL connection to the default host",   cmd_telnets_connect_default},
   {"reset", "reset",          "uptime goes to 0",                                 cmd_reset},
   {"scan",  "scan",           "scan for wireless networks",                       cmd_wifi_scan},
   {"tcp",   "tcp host port",  "open TCP connection",                              cmd_tcp_connect},
@@ -66,7 +64,7 @@ struct command _commands[] = {
 };
 
 //////////////////////////////////////////////////////////////////////////////
-// Parse Utilities
+// CLI Utilities
 //////////////////////////////////////////////////////////////////////////////
 
 // Buffers a command until we parse and run it
@@ -76,6 +74,10 @@ static byte _command_index = 0;
 void clear_command() {
   memset(&_command, 0, sizeof(_command));
   _command_index = 0;
+}
+
+void print_prompt() {
+  term_write("> ");
 }
 
 uint8_t parse_uint8(char * str, uint8_t * dest) {
@@ -295,20 +297,11 @@ command_status cmd_telnets_connect(char * tok) {
   }
 }
 
-command_status cmd_telnets_connect_default(char * tok) {
-  if (telnets_connect("tinfig.com", 992, "sterwill")) {
-    return CMD_IO;
-  } else { 
-    term_writeln("connection failed");
-    return CMD_ERR;
-  }
-}
-
 //////////////////////////////////////////////////////////////////////////////
-// Wifi Connect
+// Wifi Join
 //////////////////////////////////////////////////////////////////////////////
 
-command_status cmd_wifi_connect(char * tok) {
+command_status cmd_wifi_join(char * tok) {
   char * arg;
   const char * ssid;
   const char * password;
@@ -430,8 +423,44 @@ void cli_loop() {
 
     clear_command();
     if (prompt) {
-      term_write("> ");
+      print_prompt();
     }
   }
 }
 
+void cli_boot(const char * default_wifi_ssid, 
+              const char * default_wifi_pass,
+              uint16_t wifi_join_timeout,
+              const char * default_telnets_host, 
+              uint16_t default_telnets_port, 
+              const char * default_telnets_user) {
+
+  boolean connected = false;
+  if (default_wifi_ssid != NULL && default_wifi_pass != NULL) {
+    term_write("wifi: auto join ssid=[");
+    term_write(default_wifi_ssid);
+    term_write("] timeout=");
+    term_print(wifi_join_timeout, DEC);
+    term_writeln("ms");
+    
+    wifi_connect(default_wifi_ssid, default_wifi_pass);
+    unsigned long timeout = millis() + wifi_join_timeout;
+    while (!wifi_is_connected() && millis() < timeout) {
+      delay(1);
+    }
+   
+    if (default_telnets_host != NULL && default_telnets_port > 0) {
+      term_write("telnets: auto connect host=");
+      term_write(default_telnets_host);
+      term_write(" port=");
+      term_print(default_telnets_port, DEC);
+      term_writeln("");
+      
+      connected = telnets_connect(default_telnets_host, default_telnets_port, default_telnets_user);
+    }
+  }
+
+  if (!connected) {
+    print_prompt();
+  }
+}

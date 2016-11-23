@@ -26,10 +26,6 @@ void on_wifi_connected(int old_wifi_status) {
   }
 }
 
-void _wifi_ssh_loop() {
-  
-}
-
 void wifi_loop() {
   int new_status = WiFi.status();
   switch (new_status) {
@@ -55,6 +51,10 @@ void wifi_connect(const char * ssid, const char * pass) {
   _info.netmask[0] = '\0';
   _info.gateway[0] = '\0';
   WiFi.begin(_info.ssid, _info.pass);
+}
+
+bool wifi_is_connected() {
+  return WiFi.status() == WL_CONNECTED;
 }
 
 void wifi_get_info(struct wifi_info * info) {

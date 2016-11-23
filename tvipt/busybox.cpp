@@ -442,15 +442,15 @@ void setConMode(void)
   if (G.telflags & UF_ECHO) {
     if (G.charmode == CHM_TRY) {
       G.charmode = CHM_ON;
-      term_serial.println("Entering character mode");
-      term_serial.println("Escape character is '^]'.");
+      term_serial.println("telnets: entering character mode");
+      term_serial.println("telnets: escape character is '^]'.");
       rawmode();
     }
   } else {
     if (G.charmode != CHM_OFF) {
       G.charmode = CHM_OFF;
-      term_serial.println("Entering line mode");
-      term_serial.println("Escape character is '^C'.");
+      term_serial.println("telnets: entering line mode");
+      term_serial.println("telnets: escape character is '^C'.");
       cookmode();
     }
   }

@@ -11,6 +11,8 @@
 
 void term_init();
 void term_loop();
+
+void term_clear();
 size_t term_write(const char c);
 size_t term_write(const uint8_t * buf, size_t size);
 size_t term_write(const char * buf, size_t size);

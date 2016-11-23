@@ -58,14 +58,10 @@ void telnets_loop_cb() {
 
 bool telnets_connect(const char * host, uint16_t port, const char * username) {
   if (!_client.connectSSL(host, port)) {
+    term_writeln("telnets: connection failed");
     return false;
   }
  
-  term_write("connected to ");
-  term_write(host);
-  term_write(":");
-  term_println(port, DEC);
-
   busybox_init(WIDTH, HEIGHT, TERM, &_client, username);
   
   wifi_set_loop_callback(telnets_loop_cb);

@@ -37,6 +37,10 @@ void term_init() {
   term_serial.setTimeout(-1);
 }
 
+void term_clear() {
+  term_write('\x1A');
+}
+
 size_t term_write(const char c) {
   return term_serial.write(c);
 }

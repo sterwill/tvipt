@@ -35,6 +35,7 @@ enum command_status {
 // Commands
 //////////////////////////////////////////////////////////////////////////////
 
+command_status cmd_chars(char * tok);
 command_status cmd_help(char * tok);
 command_status cmd_info(char * tok);
 command_status cmd_wifi_join(char * tok);
@@ -53,6 +54,7 @@ struct command {
 
 // Help is printed in this order
 struct command _commands[] = {
+  {"chars", "chars",          "print all the printable characters",               cmd_chars},
   {"h",     "h",              "print this help",                                  cmd_help},
   {"i",     "i",              "print system info",                                cmd_info},
   {"j",     "j ssid pass",    "join a WPA wireless network",                      cmd_wifi_join},
@@ -111,6 +113,29 @@ static const char * _e_missing_password = "missing password";
 static const char * _e_invalid_command = "invalid command: ";
 static const char * _e_missing_host = "missing host";
 static const char * _e_missing_port = "missing port";
+
+//////////////////////////////////////////////////////////////////////////////
+// Chars
+//////////////////////////////////////////////////////////////////////////////
+
+command_status cmd_chars(char * tok) {
+  term_writeln("send break to quit");
+
+  unsigned short col = 0;
+  while (true) {
+    for (byte i = 32; i < 128; i++) {
+      if (term_serial.read() == '\0') {
+        return CMD_OK;
+      }
+      if (col == 80) {
+        term_writeln("");
+        col = 0;
+      }
+      term_write(i);
+      col++;
+    }
+  }
+}
 
 //////////////////////////////////////////////////////////////////////////////
 // Help

@@ -33,7 +33,7 @@
  
 void term_init() {
   dbg_serial.begin(19200);
-  term_serial.begin(19200);
+  term_serial.begin(9600);
   term_serial.setTimeout(-1);
 }
 

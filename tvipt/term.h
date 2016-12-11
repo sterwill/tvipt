@@ -6,6 +6,11 @@
 #include <Print.h>
 #include <Arduino.h>
 
+// https://en.wikipedia.org/wiki/Software_flow_control
+#define TERM_XOFF     19
+#define TERM_XON      17
+#define TERM_BREAK    0
+
 #define dbg_serial    Serial
 #define term_serial   Serial1
 

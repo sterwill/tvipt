@@ -118,14 +118,35 @@ static const char * _e_missing_port = "missing port";
 // Chars
 //////////////////////////////////////////////////////////////////////////////
 
+#define FIRST_PRINTABLE   32
+#define LAST_PRINTABLE    127
+
 command_status cmd_chars(char * tok) {
   term_writeln("send break to quit");
+  
+  byte i = FIRST_PRINTABLE;
+  boolean transmit = true;
+
   while (true) {
-    for (byte i = 32; i < 128; i++) {
-      if (term_serial.read() == '\0') {
+    if (i > LAST_PRINTABLE) {
+      i = FIRST_PRINTABLE;
+    }
+
+    // Handle break and flow control
+    switch (term_serial.read()) {
+      case TERM_BREAK:
         return CMD_OK;
-      }
+      case TERM_XOFF:
+        transmit = false;
+        break;
+      case TERM_XON:
+        transmit = true;
+        break;
+    }
+    
+    if (transmit) {
       term_write(i);
+      i++;
     }
   }
 }

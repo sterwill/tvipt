@@ -7,7 +7,7 @@ bool keyboard_test() {
   term_writeln("");
   
   byte c;
-  while (term_serial.readBytes(&c, 1) > 0 && c != '\0') {
+  while (term_serial.readBytes(&c, 1) > 0 && c != TERM_BREAK) {
     // Start a new line so the description is clear
     term_writeln("");
     term_write("hex=");

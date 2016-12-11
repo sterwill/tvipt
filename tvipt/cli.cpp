@@ -223,7 +223,9 @@ command_status cmd_info(char * tok) {
   
   struct wifi_info w_info;
   wifi_get_info(&w_info);
-  
+
+  term_write("wifi firmware: ");
+  term_writeln(wifi_get_firmware_version());
   term_write("wifi status: ");
   term_writeln(wifi_get_status_description(w_info.status));
   term_write("wifi ssid: ");
@@ -263,6 +265,9 @@ command_status cmd_keyboard_test(char * tok) {
 command_status cmd_reset(char * tok) {
   term_writeln("starting over!");
   term_serial.flush();
+  while (term_serial.available()) {
+    term_serial.read();
+  }
   NVIC_SystemReset();
   
   // Never happens!

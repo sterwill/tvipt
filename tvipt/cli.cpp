@@ -120,19 +120,12 @@ static const char * _e_missing_port = "missing port";
 
 command_status cmd_chars(char * tok) {
   term_writeln("send break to quit");
-
-  unsigned short col = 0;
   while (true) {
     for (byte i = 32; i < 128; i++) {
       if (term_serial.read() == '\0') {
         return CMD_OK;
       }
-      if (col == 80) {
-        term_writeln("");
-        col = 0;
-      }
       term_write(i);
-      col++;
     }
   }
 }

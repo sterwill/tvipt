@@ -7,7 +7,14 @@ void setup() {
   wifi_init();
   cli_init();
   
+  while (term_serial.available()) {
+    term_serial.read();
+  }
   term_clear();
+  delay(100);
+  term_clear();
+  delay(100);
+
   term_writeln("tvipt/1 (TeleVideo Personal Terminal) Operating System");
   term_writeln("");
   

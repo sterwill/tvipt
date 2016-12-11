@@ -25,6 +25,7 @@ const char * wifi_get_encryption_description(int type);
 WiFiClient & wifi_get_client();
 void wifi_set_loop_callback(void (*loop_cb)(void));
 bool wifi_has_loop_callback();
+const char * wifi_get_firmware_version();
 
 #endif
 

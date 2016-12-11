@@ -84,6 +84,10 @@ void wifi_scan() {
   }
 }
 
+const char * wifi_get_firmware_version() {
+  return WiFi.firmwareVersion();
+}
+
 const char * wifi_get_status_description(int status) {
   switch (status) {
     case WL_CONNECTED:

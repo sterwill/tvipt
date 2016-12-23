@@ -15,25 +15,8 @@ void wifi_init() {
   _info.pass[0] = '\0';
 }
 
-void on_wifi_connected(int old_wifi_status) {
-  if (old_wifi_status != WL_CONNECTED) {
-    // Just connected, start SSH
-  } else {
-    // Pass keys to SSH
-    //byte key_buf[16];
-    //uint16_t key_bytes_read = read(term_serial, key_buf, sizeof(key_buf));
-    //term_serial.write(key_buf, key_bytes_read);
-  }
-}
-
 void wifi_loop() {
-  int new_status = WiFi.status();
-  switch (new_status) {
-    case WL_CONNECTED:
-      on_wifi_connected(new_status);
-      break;
-  }
-  _info.status = new_status;
+  _info.status = WiFi.status();
   _info.address = WiFi.localIP();
   _info.netmask = WiFi.subnetMask();
   _info.gateway = WiFi.gatewayIP();

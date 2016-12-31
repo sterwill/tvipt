@@ -36,6 +36,7 @@ enum command_status {
 //////////////////////////////////////////////////////////////////////////////
 
 command_status cmd_chars(char * tok);
+command_status cmd_echo(char * tok);
 command_status cmd_help(char * tok);
 command_status cmd_info(char * tok);
 command_status cmd_wifi_join(char * tok);
@@ -54,7 +55,8 @@ struct command {
 
 // Help is printed in this order
 struct command _commands[] = {
-  {"chars", "chars",          "print all the printable characters",               cmd_chars},
+  {"chars", "chars [alt]",    "print the (alternate) printable characters",       cmd_chars},
+  {"echo",  "echo [dbg]",     "echo chars typed to terminal (or debugger)",       cmd_echo},
   {"h",     "h",              "print this help",                                  cmd_help},
   {"i",     "i",              "print system info",                                cmd_info},
   {"j",     "j ssid pass",    "join a WPA wireless network",                      cmd_wifi_join},
@@ -113,40 +115,102 @@ static const char * _e_missing_password = "missing password";
 static const char * _e_invalid_command = "invalid command: ";
 static const char * _e_missing_host = "missing host";
 static const char * _e_missing_port = "missing port";
+static const char * _e_invalid_target = "invalid target";
+static const char * _e_invalid_charset = "invalid charset: ";
 
 //////////////////////////////////////////////////////////////////////////////
 // Chars
 //////////////////////////////////////////////////////////////////////////////
 
-#define FIRST_PRINTABLE   32
-#define LAST_PRINTABLE    127
+#define FIRST_PRINTABLE   0x20
+#define LAST_PRINTABLE    0x7E
 
 command_status cmd_chars(char * tok) {
-  term_writeln("send break to quit");
+  char * arg;
+  boolean print_alt_chars = false;
+
+  // Parse charset
+  arg = strtok_r(NULL, " ", &tok);
+  if (arg != NULL) {
+    if (strcmp("alt", arg) == 0) {
+      print_alt_chars = true;
+    } else {
+      term_write(_e_invalid_charset);
+      term_writeln(arg);
+      return CMD_ERR;
+    }
+  }
+ 
+  // 94 total printable chars, printed 8 per line in columns 10 chars wide; 12 lines total  
+  byte c = FIRST_PRINTABLE;
+  while (c <= FIRST_PRINTABLE + 11) {
+    for (int col = 0; col < 8; col++) {
+      if (term_serial.read() == TERM_XOFF) {
+        while (term_serial.read() != TERM_XON) {}
+      }
+      
+      byte ch = c + (col * 12);
+      
+      // On the last row, we'll have some columns to leave empty
+      if (ch > LAST_PRINTABLE) {
+        break;
+      }
+
+      term_write("0x");
+      term_print(ch, HEX);
+      term_write(" ");
+
+      if (print_alt_chars) {
+        term_write(TERM_ESCAPE);
+        term_write(TERM_ENABLE_ALT_CHAR);      
+      }
+
+      term_write(ch);
+      
+      if (print_alt_chars) {
+        term_write(TERM_ESCAPE);  
+        term_write(TERM_DISABLE_ALT_CHAR);
+      }
+
+      term_write("    "); 
+    }
+    c++;
+    term_writeln("");
+  }
   
-  byte i = FIRST_PRINTABLE;
-  boolean transmit = true;
+  return CMD_OK;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// Echo
+//////////////////////////////////////////////////////////////////////////////
+
+#include <Arduino.h>
+command_status cmd_echo(char * tok) {
+  char * arg;
+  Print * target = &term_serial;
+  
+  // Parse target
+  arg = strtok_r(NULL, " ", &tok);
+  if (arg != NULL) {
+    if (strcmp("dbg", arg) == 0) {
+      target = &dbg_serial;
+    } else {
+      term_write(_e_invalid_target);
+      term_writeln(arg);
+      return CMD_ERR;
+    }
+  }
+
+  term_writeln("send break to quit");
 
   while (true) {
-    if (i > LAST_PRINTABLE) {
-      i = FIRST_PRINTABLE;
-    }
-
     // Handle break and flow control
-    switch (term_serial.read()) {
-      case TERM_BREAK:
-        return CMD_OK;
-      case TERM_XOFF:
-        transmit = false;
-        break;
-      case TERM_XON:
-        transmit = true;
-        break;
-    }
-    
-    if (transmit) {
-      term_write(i);
-      i++;
+    int c = term_serial.read();
+    if (c == TERM_BREAK) {
+      return CMD_OK;
+    } else if (c != -1) {
+      target->write(c);
     }
   }
 }

@@ -4,10 +4,9 @@
 
 /*
  * The TeleVideo Personal Terminal (PT) is a typical RS-232 serial terminal 
- * that supports the ASCII character set (and possibly some extended 
- * character sets, I haven't probed around much).  The control characters 
- * don't seem to be compatible with more common terminals like the DEC VT 
- * series, and it has a few quirks of its own.
+ * that supports the ASCII character set and a few extended characters.
+ * It seems to support a small subset of the escape sequences supported by
+ * the 900-series TeleVideo terminals.
  * 
  * Newlines
  * 
@@ -29,16 +28,137 @@
  * The terminal sends ASCII BS when BACK SPACE is pressed and ASCII DEL
  * when DEL is pressed.  This is normal and good.
  * 
+ * Control Sequences
+ * 
+ * This table is reproduction of table B-1 in the PT manual.  All of
+ * these sequences function as documented on my PT.  Control sequences 
+ * are case-insensitive (you can use the lower- or upper-case letter).
+ * 
+ * Control    Hex   Effect
+ * Character  Code
+ * 
+ * NULL       00    No action
+ * CTRL E     05    Send terminal ID
+ * CTRL G     07    Sound bell
+ * CTRL H     08    Cursor left (BACK SPACE)
+ * CTRL I     09    Tabulate (TAB)
+ * CTRL J     0A    Cursor down
+ * CTRL K     0B    Cursor up
+ * CTRL L     0C    Cursor right
+ * CTRL M     0D    Carriage return (RETURN)
+ * CTRL N     0E    Set DTR control, disable XON/XOFF
+ * CTRL O     0F    Set XON/XOFF, disable DTR control
+ * CTRL R     12    Transparent print mode on
+ * CTRL T     14    Transparent print mode off
+ * CTRL Z     1A    Clear screen to spaces
+ * CTRL \           CTRL + CLEAR
+ * CTRL ^     1E    Home
+ * CTRL _     1F    New line
+ * CTRL [     1B    Escape sequence initiator
+ *   
+ * Escape Sequences
+ * 
+ * Here are the escape sequences that are listed in table B-2 in the
+ * PT manual.  Not all of them work on my PT.  I suspect the manual is 
+ * for a newer model of the PT or one with newer firmware, or that
+ * those functions only work in combination with some other mode
+ * or setting that I don't understand.
+ * 
+ * Escape sequences are case-sensitive.
+ *  
+ * Sequence       Effect
+ * 
+ * ESC "          Enable (unlock) keyboard
+ * ESC #          Disable (lock) keyboard
+ * 
+ * ESC )          Half-intensity visual attrbute on (doesn't work)
+ * ESC (          Half-intensity visual attrbute off (doesn't work)
+ * ESC G 0 m n    Load 0 attribute (m and n unknown)
+ * ESC G 1 m n    Load 1 attribute (m and n unknown)
+ * ESC F          Activiate 0 attribute mode (doesn't work)
+ * ESC H          Activiate 1 attribute mode (doesn't work)
+ * 
+ * ESC . n        Set cursor appearance (0 <= n <= 4)
+ * ESC 1          Set tab stop at cursor position
+ * ESC 2          Clear tab stop at cursor position
+ * ESC 3          Clear all tab stops
+ * 
+ * ESC 7          Send screen from home to (but no including) cursor position
+ * ESC s          Send entire screen
+ * ESC Z 1        Send set up parameters
+ * ESC Z 2        Send function key memory
+ * 
+ * ESC = r c      Move cursor to address
+ * ESC I          Tabulate backward
+ * 
+ * ESC P          Page print (CTRL + PRINT)
+ * ESC @          Copy print mode on
+ * ESC A          Copy print mode off
+ * ESC `          Transparent print mode on
+ * ESC a          Transparent print mode off
+ * 
+ * ESC B          Set block communication mode
+ * ESC D H        Set half duplex communication mode
+ * ESC D F        Set full duplex communication mode
+ * 
+ * ESC E          Insert line at cursor position
+ * ESC R          Delete cursor line
+ * ESC T          Erase to spaces, from (and including) cursor to end of line
+ * ESC Y          Erase to spaces, from (and including) cursor to end of page
+ * ESC +          Clear screen to spaces
+ * ESC *          CTRL + CLEAR
+ * 
+ * ESC U          Monitor mode on
+ * LOC_ESC U
+ * LOC ESC X      Monitor mode off
+ * ESC V          Self test
+ * ESC <unknown>  Power reset (the scanned manual page appears to show a superscript 
+ *                hyphen, but I can't find a sequence that does this)
+ * 
+ * ESC k          Set local edit mode
+ * ESC l          Set duplex edit mode
+ * ESC 0 1 7      Program SEND key from home to cursor position
+ * ESC 0 1 s      Program SEND key for entire screen
+ * ESC x 1 n m    Program line delimiter (untested)
+ * ESC x 2 n m    Program text delimiter (untested)
+ * ESC m x y      Program terminal ID
+ * ESC M          Send terminal ID
+ * 
+ * ESC | n m <name>^<data> CTRL Y   Program function keys, custom state (untested)
+ * ESC ] n <name>&<data> CTRL Y     Program directory, phone state (untested)
+ * 
+ * ESC _          Program EXIT key, starting state
+ * ESC ^          Program EXIT key, custom state
+ * ESC p          Set 40-column display
+ * ESC u          Set 80-column display
+ * ESC v          Autowrap mode on
+ * ESC w          Autowrap mode off
+ * ESC J          Alternate character set on
+ * ESC K          Alternate character set off
+ * 
+ * Bonus Escape Sequences
+ *  
+ * These aren't listed in the table B-2 in the PT Manual.  I discovered them
+ * by trying sequences listed in other TeleVideo terminal manuals.
+ * 
+ * ESC ~          Reset the terminal to factory settings
+ * 
  */
- 
-void term_init() {
-  dbg_serial.begin(19200);
-  term_serial.begin(9600);
-  term_serial.setTimeout(-1);
-}
 
-void term_clear() {
-  term_write('\x1A');
+// Contents of /usr/share/tabset/stdcrt from ncurses 5.9.  Not sure if this
+// is actually capable of resetting the PT from any weird state.
+#define TVIPT_INIT "\x0D\x1B\x33\x0D\x20\x20\x20\x20\x20\x20\x20\x20\x1B\x31\x20\x20\x20\x20\x20\x20\x20\x20\x1B\x31\x20\x20\x20\x20\x20\x20\x20\x20\x1B\x31\x20\x20\x20\x20\x20\x20\x20\x20\x1B\x31\x20\x20\x20\x20\x20\x20\x20\x20\x1B\x31\x20\x20\x20\x20\x20\x20\x20\x20\x1B\x31\x20\x20\x20\x20\x20\x20\x20\x20\x1B\x31\x20\x20\x20\x20\x20\x20\x20\x20\x1B\x31\x20\x20\x20\x20\x20\x20\x20\x20\x1B\x31\x0D"
+#define TVIPT_CLEAR "\x1a"
+
+void term_init() {
+  dbg_serial.begin(115200);
+  term_serial.begin(19200);
+
+  while (!term_serial) {}
+  
+  term_serial.setTimeout(-1);
+  term_serial.write(TVIPT_INIT);
+  term_serial.write(TVIPT_CLEAR);
 }
 
 size_t term_write(const char c) {

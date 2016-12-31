@@ -6,18 +6,19 @@
 #include <Print.h>
 #include <Arduino.h>
 
-// https://en.wikipedia.org/wiki/Software_flow_control
-#define TERM_XOFF     19
-#define TERM_XON      17
 #define TERM_BREAK    0
+// https://en.wikipedia.org/wiki/Software_flow_control
+#define TERM_XOFF               0x13
+#define TERM_XON                0x11
+#define TERM_ESCAPE             0x1B
+#define TERM_ENABLE_ALT_CHAR    0x4A
+#define TERM_DISABLE_ALT_CHAR   0x4B
 
 #define dbg_serial    Serial
 #define term_serial   Serial1
 
 void term_init();
 void term_loop();
-
-void term_clear();
 size_t term_write(const char c);
 size_t term_write(const uint8_t * buf, size_t size);
 size_t term_write(const char * buf, size_t size);

@@ -4,71 +4,30 @@
 #include "term.h"
 #include "util.h"
 
-static struct wifi_info _info;
+static char _ssid[40];
+static char _pass[40];
 static void (*_loop_cb)();
 
 void wifi_init() {
   WiFi.setPins(8, 7, 4, 2);
-  
-  _info.status = WL_IDLE_STATUS;
-  _info.ssid[0] = '\0';
-  _info.pass[0] = '\0';
+  _ssid[0] = '\0';
+  _pass[0] = '\0';
 }
 
 void wifi_loop() {
-  _info.status = WiFi.status();
-  _info.address = WiFi.localIP();
-  _info.netmask = WiFi.subnetMask();
-  _info.gateway = WiFi.gatewayIP();
-
   if (_loop_cb != NULL) {
     _loop_cb();
   }
 }
 
 void wifi_connect(const char * ssid, const char * pass) {
-  _info.status = WL_IDLE_STATUS;
-  scopy(_info.ssid, ssid, sizeof(_info.ssid));
-  scopy(_info.pass, pass, sizeof(_info.pass));
-  _info.address[0] = '\0';
-  _info.netmask[0] = '\0';
-  _info.gateway[0] = '\0';
-  WiFi.begin(_info.ssid, _info.pass);
+  scopy(_ssid, ssid, sizeof(_ssid));
+  scopy(_pass, pass, sizeof(_pass));
+  WiFi.begin(_ssid, _pass);
 }
 
 bool wifi_is_connected() {
   return WiFi.status() == WL_CONNECTED;
-}
-
-void wifi_get_info(struct wifi_info * info) {
-  info->status = _info.status;
-  scopy(info->ssid, _info.ssid, sizeof(info->ssid));
-  scopy(info->pass, _info.pass, sizeof(info->pass));
-  info->address = _info.address;
-  info->netmask = _info.netmask;
-  info->gateway = _info.gateway;
-}
-
-void wifi_scan() {
-  int count = WiFi.scanNetworks();
-  if (count == -1) {
-    term_writeln("scan error");
-    return;
-  }
-
-  for (int i = 0; i < count; i++) {
-    term_write("\"");
-    term_write(WiFi.SSID(i));
-    term_write("\" ");
-    term_print(WiFi.RSSI(i), DEC);
-    term_write(" dBm, ");
-    term_writeln(wifi_get_encryption_description(WiFi.encryptionType(i)));
-    Serial.flush();
-  }
-}
-
-const char * wifi_get_firmware_version() {
-  return WiFi.firmwareVersion();
 }
 
 const char * wifi_get_status_description(int status) {
@@ -108,6 +67,33 @@ const char * wifi_get_encryption_description(int type) {
       return "auto";
     default:
       return "unknown";    
+  }
+}
+
+void wifi_get_info(struct wifi_info * info) {
+  info->status = WiFi.status();
+  info->status_description = wifi_get_status_description(info->status);
+  scopy(info->ssid, _ssid, sizeof(info->ssid));
+  scopy(info->pass, _pass, sizeof(info->pass));
+  info->address = WiFi.localIP();
+  info->netmask = WiFi.subnetMask();
+  info->gateway = WiFi.gatewayIP();
+  info->time = WiFi.getTime();
+  info->firmware_version = WiFi.firmwareVersion();
+}
+
+int wifi_scan(void (&scan_cb)(struct wifi_network)) {
+  int count = WiFi.scanNetworks();
+  if (count == -1) {
+    return count;
+  }
+
+  struct wifi_network net;
+  for (int i = 0; i < count; i++) {
+    scopy(net.ssid, WiFi.SSID(i), sizeof(net.ssid));
+    net.rssi = WiFi.RSSI(i);
+    net.encryption_description = wifi_get_encryption_description(WiFi.encryptionType(i));
+    scan_cb(net);
   }
 }
 

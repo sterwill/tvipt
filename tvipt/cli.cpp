@@ -288,23 +288,33 @@ command_status cmd_info(char * tok) {
   struct wifi_info w_info;
   wifi_get_info(&w_info);
 
-  term_write("wifi firmware: ");
-  term_writeln(wifi_get_firmware_version());
   term_write("wifi status: ");
-  term_writeln(wifi_get_status_description(w_info.status));
+  term_writeln(w_info.status_description);
+  
   term_write("wifi ssid: ");
   term_writeln(w_info.ssid);
+  
   term_write("wifi pass: ");
   term_writeln_masked(w_info.pass);
+  
   term_write("wifi address: ");
   w_info.address.printTo(term_serial);
   term_writeln("");
+  
   term_write("wifi netmask: ");
   w_info.netmask.printTo(term_serial);
   term_writeln("");
+  
   term_write("wifi gateway: ");
   w_info.gateway.printTo(term_serial);
   term_writeln("");
+  
+  term_write("wifi time: ");
+  term_print(w_info.time, DEC);
+  term_writeln("");
+
+  term_write("wifi firmware: ");
+  term_writeln(w_info.firmware_version);
 
   return CMD_OK;
 }
@@ -438,9 +448,25 @@ command_status cmd_wifi_join(char * tok) {
 // Wifi Scan
 //////////////////////////////////////////////////////////////////////////////
 
+void print_wifi_network(struct wifi_network net) {
+    term_write("\"");
+    term_write(net.ssid);
+    term_write("\" ");
+    term_print(net.rssi, DEC);
+    term_write(" dBm, ");
+    term_writeln(net.encryption_description);
+}
+
 command_status cmd_wifi_scan(char * tok) {
-  wifi_scan();
-  return CMD_OK;
+  int nets = wifi_scan(print_wifi_network);
+  if (nets == -1) {
+    term_writeln("scan error");
+    return CMD_ERR;
+  } else {
+    term_print(nets, DEC);
+    term_writeln(" networks");
+    return CMD_OK;
+  }
 }
 
 //////////////////////////////////////////////////////////////////////////////

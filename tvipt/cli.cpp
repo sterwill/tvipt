@@ -5,6 +5,7 @@
 #include "tcp.h"
 #include "telnets.h"
 #include "keyboard_test.h"
+#include "weather.h"
 
 //////////////////////////////////////////////////////////////////////////////
 // Internal Data
@@ -45,6 +46,7 @@ command_status cmd_reset(char * tok);
 command_status cmd_wifi_scan(char * tok);
 command_status cmd_tcp_connect(char * tok);
 command_status cmd_telnets_connect(char * tok);
+command_status cmd_weather(char * tok);
 
 struct command {
   const char * name;
@@ -55,16 +57,17 @@ struct command {
 
 // Help is printed in this order
 struct command _commands[] = {
-  {"chars", "chars [alt]",    "print the (alternate) printable characters",       cmd_chars},
-  {"echo",  "echo [dbg]",     "echo chars typed to terminal (or debugger)",       cmd_echo},
-  {"h",     "h",              "print this help",                                  cmd_help},
-  {"i",     "i",              "print system info",                                cmd_info},
-  {"j",     "j",              "join a WPA wireless network",                      cmd_wifi_join},
-  {"keys",  "keys",           "keyboard input test",                              cmd_keyboard_test},
-  {"reset", "reset",          "uptime goes to 0",                                 cmd_reset},
-  {"scan",  "scan",           "scan for wireless networks",                       cmd_wifi_scan},
-  {"tcp",   "tcp host port",  "open TCP connection",                              cmd_tcp_connect},
-  {"tel",   "tel host port",  "open Telnet/SSL connection",                       cmd_telnets_connect},
+  {"chars",   "chars [alt]",    "print the (alternate) printable characters",       cmd_chars},
+  {"echo",    "echo [dbg]",     "echo chars typed to terminal (or debugger)",       cmd_echo},
+  {"h",       "h",              "print this help",                                  cmd_help},
+  {"i",       "i",              "print system info",                                cmd_info},
+  {"j",       "j",              "join a WPA wireless network",                      cmd_wifi_join},
+  {"keys",    "keys",           "keyboard input test",                              cmd_keyboard_test},
+  {"reset",   "reset",          "uptime goes to 0",                                 cmd_reset},
+  {"scan",    "scan",           "scan for wireless networks",                       cmd_wifi_scan},
+  {"tcp",     "tcp host port",  "open TCP connection",                              cmd_tcp_connect},
+  {"tel",     "tel host port",  "open Telnet/SSL connection",                       cmd_telnets_connect},
+  {"w",       "w",              "show the weather",                                 cmd_weather},
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -117,6 +120,7 @@ static const char * _e_missing_host = "missing host";
 static const char * _e_missing_port = "missing port";
 static const char * _e_invalid_target = "invalid target";
 static const char * _e_invalid_charset = "invalid charset: ";
+static const char * _e_missing_zip = "missing zip";
 
 //////////////////////////////////////////////////////////////////////////////
 // Chars
@@ -469,6 +473,27 @@ command_status cmd_wifi_scan(char * tok) {
     term_writeln(" networks");
     return CMD_OK;
   }
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// Weather
+//////////////////////////////////////////////////////////////////////////////
+
+command_status cmd_weather(char * tok) {
+  int n;
+  char zip[6];
+  
+  term_write("zip: ");
+  n = term_readln(zip, sizeof(zip) - 1, READLN_ECHO);
+  if (n == 0) {
+    term_writeln(_e_missing_zip);
+    return CMD_ERR;
+  }
+  zip[n] = '\0';
+  term_writeln("");
+
+  weather(zip);
+  return CMD_OK;
 }
 
 //////////////////////////////////////////////////////////////////////////////

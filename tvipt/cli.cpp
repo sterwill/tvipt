@@ -59,7 +59,7 @@ struct command _commands[] = {
   {"echo",  "echo [dbg]",     "echo chars typed to terminal (or debugger)",       cmd_echo},
   {"h",     "h",              "print this help",                                  cmd_help},
   {"i",     "i",              "print system info",                                cmd_info},
-  {"j",     "j ssid pass",    "join a WPA wireless network",                      cmd_wifi_join},
+  {"j",     "j",              "join a WPA wireless network",                      cmd_wifi_join},
   {"keys",  "keys",           "keyboard input test",                              cmd_keyboard_test},
   {"reset", "reset",          "uptime goes to 0",                                 cmd_reset},
   {"scan",  "scan",           "scan for wireless networks",                       cmd_wifi_scan},
@@ -420,27 +420,29 @@ command_status cmd_telnets_connect(char * tok) {
 //////////////////////////////////////////////////////////////////////////////
 
 command_status cmd_wifi_join(char * tok) {
-  char * arg;
-  const char * ssid;
-  const char * password;
-
-  // Parse SSID
-  arg = strtok_r(NULL, " ", &tok);
-  if (arg == NULL) {
+  int n;
+  char ssid[100];
+  char pass[100];
+  
+  term_write("ssid: ");
+  n = term_readln(ssid, sizeof(ssid) - 1, READLN_ECHO);
+  if (n == 0) {
     term_writeln(_e_missing_ssid);
     return CMD_ERR;
   }
-  ssid = arg;
+  ssid[n] = '\0';
+  term_writeln("");
 
-  // Parse password
-  arg = strtok_r(NULL, " ", &tok);
-  if (arg == NULL) {
+  term_write("password: ");
+  n = term_readln(pass, sizeof(pass) - 1, READLN_MASKED);
+  if (n == 0) {
     term_writeln(_e_missing_password);
     return CMD_ERR;
   }
-  password = arg;
+  pass[n] = '\0';
+  term_writeln("");
 
-  wifi_connect(ssid, password);
+  wifi_connect(ssid, pass);
   return CMD_OK;
 }
 

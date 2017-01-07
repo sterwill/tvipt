@@ -202,3 +202,23 @@ void term_println(long val, int format) {
   term_serial.write("\r\n");
 }
 
+int term_readln(char * buf, int max, readln_echo echo) {
+  char * start = buf;
+  char * end = start + max;
+  while (buf < end) {
+    int c = term_serial.read();
+    if (c != -1) {
+      if (c == '\0' || c == '\r' || c == '\n') {
+        break;
+      }
+      if (echo == READLN_ECHO) {
+        term_write(c);
+      } else if (echo = READLN_MASKED) {
+        term_write('*');
+      }
+      *buf++ = c;
+    }
+  }
+  return buf - start;
+}
+

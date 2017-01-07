@@ -17,6 +17,12 @@
 #define dbg_serial    Serial
 #define term_serial   Serial1
 
+enum readln_echo {
+  READLN_ECHO,
+  READLN_NO_ECHO,
+  READLN_MASKED,  
+};
+
 void term_init();
 void term_loop();
 size_t term_write(const char c);
@@ -29,6 +35,8 @@ void term_writeln_masked(const char * val);
 
 void term_print(long val, int format = DEC);
 void term_println(long val, int format = DEC);
+
+int term_readln(char * buf, int max, readln_echo echo);
 
 #endif
 

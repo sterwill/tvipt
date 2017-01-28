@@ -6,15 +6,12 @@ void setup() {
   term_init();
   wifi_init();
   cli_init();
-  
+
+  // Drain any queued keys (noise?) so we don't put garbage in the command buffer.
   while (term_serial.available()) {
     term_serial.read();
   }
-  term_clear();
-  delay(100);
-  term_clear();
-  delay(100);
-
+  
   term_writeln("tvipt/1 (TeleVideo Personal Terminal) Operating System");
   term_writeln("");
   

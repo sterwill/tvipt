@@ -152,6 +152,7 @@
 
 void term_init() {
   dbg_serial.begin(115200);
+  term_serial.end();
   term_serial.begin(19200);
 
   while (!term_serial) {}

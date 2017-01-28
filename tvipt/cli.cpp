@@ -563,6 +563,25 @@ void cli_loop() {
   
   while (term_serial && term_serial.available()) {
     char c = term_serial.read();
+
+    // Handle backspace before normal character echo so we can do what's
+    // required to make it look right and prevent it from erasing too far
+    // back.
+    if (c == 0x08) {
+      if (_command_index > 0) {
+        // Go back one char
+        term_serial.write(0x08);
+        // Overwrite char with a space
+        term_serial.write(" ");
+        // Go back again
+        term_serial.write(0x08);
+        // Shrink the command buffer
+        _command[_command_index] = 0;
+        _command_index--;
+      }
+      continue;
+    }
+
     if (ECHO) {
       term_serial.write(c);
     }

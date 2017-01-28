@@ -569,12 +569,14 @@ void cli_loop() {
     // back.
     if (c == 0x08) {
       if (_command_index > 0) {
-        // Go back one char
-        term_serial.write(0x08);
-        // Overwrite char with a space
-        term_serial.write(" ");
-        // Go back again
-        term_serial.write(0x08);
+        if (ECHO) {
+          // Go back one char
+          term_serial.write(0x08);
+          // Overwrite char with a space
+          term_serial.write(" ");
+          // Go back again
+          term_serial.write(0x08);
+        }
         // Shrink the command buffer
         _command[_command_index] = 0;
         _command_index--;

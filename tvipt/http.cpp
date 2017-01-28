@@ -114,7 +114,7 @@ void http_get(struct http_request * req) {
     size_t read = http_read_line(req->_client, line, sizeof(line));
 
     // 12 chars is enough for "HTTP/1.1 200"
-    if (read < 12 || strncmp(line, "HTTP/1.1 ", 9) != 0) {
+    if (read < 12 || (strncmp(line, "HTTP/1.0 ", 9) != 0 && strncmp(line, "HTTP/1.1 ", 9) != 0)) {
       req->status = HTTP_STATUS_MALFROMED_RESPONSE_LINE;
       req->_client->stop();
       return;
@@ -126,8 +126,6 @@ void http_get(struct http_request * req) {
     do {
       // Read headers
       read = http_read_line(req->_client, line, sizeof(line));
-      term_write("read=");
-      term_println(read, DEC);
       if (read > 0 && req->header_cb != NULL) {
         term_write("first=");
         term_println(line[0], HEX);

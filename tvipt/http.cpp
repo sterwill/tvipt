@@ -67,6 +67,98 @@ bool parse_header(char * str, char ** name, char ** value) {
   return false;
 }
 
+bool parse_url(struct url_parts * parts, const char * url) {
+  enum parse_state {
+    in_scheme,
+    in_colon_and_slashes,
+    in_host,
+    in_port,
+    in_path_and_query,
+  };
+
+  char * scheme = parts->scheme;
+  const char * scheme_last = parts->scheme + sizeof(parts->scheme) - 1;
+  memset(parts->scheme, '\0', sizeof(parts->scheme));
+  
+  char * host = parts->host;
+  const char * host_last = parts->host + sizeof(parts->host) - 1;
+  memset(parts->host, '\0', sizeof(parts->host));
+
+  char port_buf[6];
+  char * port = port_buf;
+  const char * port_last = port + sizeof(port_buf) - 1;
+  memset(port, '\0', sizeof(port_buf));
+  parts->port = 0;
+  
+  char * path_and_query = parts->path_and_query;
+  const char * path_and_query_last = parts->path_and_query + sizeof(parts->path_and_query) - 1;
+  memset(parts->path_and_query, '\0', sizeof(parts->path_and_query));
+
+  parse_state state = in_scheme;
+  
+  char c;
+  while ((c = *url) != '\0') {
+    switch (state) {
+      case in_scheme:
+        if (c == ':') {
+          state = in_colon_and_slashes;
+        } else {
+          // Write if enough room to preserve terminator
+          if (scheme < scheme_last) {
+            *scheme++ = c;
+          }
+          url++;
+        }
+        break;
+      case in_colon_and_slashes:
+        if (c == ':' || c == '/') {
+          url++;
+        } else {
+          state = in_host;
+        }
+        break;
+      case in_host:
+        if (c == ':') {
+          state = in_port;
+          url++;
+        } else if (c == '/') {
+          state = in_path_and_query;
+        } else {
+          // Write if enough room to preserve terminator
+          if (host < host_last) {
+            *host++ = c;
+          }
+          url++;
+        }
+        break;
+      case in_port:
+        if (c == '/') {
+          // If we read anything, convert it
+          if (port > port_buf) {
+            parts->port = atoi(port_buf);
+          }
+          state = in_path_and_query;
+        } else {
+          // Write if enough room to preserve terminator
+          if (port < port_last) {
+            *port++ = c;
+          }
+          url++;
+        }
+        break;
+      case in_path_and_query:
+        // Write if enough room to preserve terminator
+        if (path_and_query < path_and_query_last) {
+          *path_and_query++ = c;
+        }
+        url++;
+        break;
+    }
+  }
+
+  return state == in_path_and_query;
+}
+
 void http_request_init(struct http_request * req) {
   req->host = "";
   req->port = 80;
@@ -78,45 +170,45 @@ void http_request_init(struct http_request * req) {
   
   req->status = 0;
 
-  req->_client = NULL;
+  req->client = NULL;
 }
 
 void http_get(struct http_request * req) {
   bool connected;
   if (req->ssl) {
-    req->_client = new WiFiSSLClient();
-    connected = req->_client->connectSSL(req->host, req->port);
+    req->client = new WiFiSSLClient();
+    connected = req->client->connectSSL(req->host, req->port);
   } else {
-    req->_client = new WiFiClient();
-    connected = req->_client->connect(req->host, req->port);
+    req->client = new WiFiClient();
+    connected = req->client->connect(req->host, req->port);
   }
 
   if (!connected) {
     req->status = HTTP_STATUS_CONNECT_ERR;
   } else {
-    req->_client->print("GET ");
-    req->_client->print(req->path_and_query);
-    req->_client->println(" HTTP/1.1");
+    req->client->print("GET ");
+    req->client->print(req->path_and_query);
+    req->client->println(" HTTP/1.1");
     
-    req->_client->print("Host: ");
-    req->_client->println(req->host);
+    req->client->print("Host: ");
+    req->client->println(req->host);
    
-    req->_client->println("Connection: close");
+    req->client->println("Connection: close");
 
-    req->_client->println("Accept: */*");
-    req->_client->println("User-Agent: tvipt/1");
+    req->client->println("Accept: */*");
+    req->client->println("User-Agent: tvipt/1");
     
-    req->_client->println();
+    req->client->println();
     
-    req->_client->flush();
+    req->client->flush();
 
     char line[1024];
-    size_t read = http_read_line(req->_client, line, sizeof(line));
+    size_t read = http_read_line(req->client, line, sizeof(line));
 
     // 12 chars is enough for "HTTP/1.1 200"
     if (read < 12 || (strncmp(line, "HTTP/1.0 ", 9) != 0 && strncmp(line, "HTTP/1.1 ", 9) != 0)) {
       req->status = HTTP_STATUS_MALFROMED_RESPONSE_LINE;
-      req->_client->stop();
+      req->client->stop();
       return;
     }
 
@@ -125,27 +217,25 @@ void http_get(struct http_request * req) {
     // Read headers until we read an empty line
     do {
       // Read headers
-      read = http_read_line(req->_client, line, sizeof(line));
+      read = http_read_line(req->client, line, sizeof(line));
       if (read > 0 && req->header_cb != NULL) {
-        term_write("first=");
-        term_println(line[0], HEX);
         char * header;
         char * value;
         if (!parse_header(line, &header, &value)) {
           req->status = HTTP_STATUS_MALFROMED_RESPONSE_HEADER;
-          req->_client->stop();
+          req->client->stop();
           return;
         }
-        req->header_cb(header, value);
+        req->header_cb(req, header, value);
       }
     } while (read > 0);
 
     // Now read the body
     if (req->body_cb != NULL) {
-      req->body_cb(req->_client);
+      req->body_cb(req);
     }
   }
 
-  req->_client->stop();
+  req->client->stop();
 }
 

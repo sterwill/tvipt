@@ -22,16 +22,25 @@ struct http_request {
   bool ssl;
   const char * path_and_query;
   struct http_key_value ** headers;
-  void (*header_cb)(const char * header, const char * value);
-  void (*body_cb)(Client * client);
+  void (*header_cb)(struct http_request * req, const char * header, const char * value);
+  void (*body_cb)(struct http_request * req);
+  void * caller_ctx;
 
   // HTTP methods fill these fields
   int status;
 
-  // Internal
-  WiFiClient * _client;
+  // Valid during callback execution
+  WiFiClient * client;
 };
 
+struct url_parts {
+  char scheme[6];
+  char host[64];
+  uint16_t port;
+  char path_and_query[256];
+};
+
+bool parse_url(struct url_parts * parts, const char * url);
 void http_request_init(struct http_request * req);
 void http_get(struct http_request * req);
 

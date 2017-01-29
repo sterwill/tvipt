@@ -3,6 +3,7 @@
 #ifndef _UTIL_H
 #define _UTIL_H
 
+#include <Arduino.h>
 #include <string.h>
 
 // Like strncpy, but makes sure dest is terminated.

@@ -2,6 +2,7 @@
 #include "http.h"
 #include "term.h"
 #include "util.h"
+#include "jsmn.h"
 
 struct get_mapclick_url_ctx {
   char * url;
@@ -150,6 +151,24 @@ bool get_mapclick_json(const char * mapclick_url, char * mapclick_json, size_t m
 }
 
 bool parse_mapclick_json(const char * mapclick_json, struct weather * weather) {
+  jsmn_parser parser;
+  jsmntok_t tokens[500];
+  
+  jsmn_init(&parser);
+  int num_tokens = jsmn_parse(&parser, mapclick_json, strlen(mapclick_json), tokens, sizeof(tokens) / sizeof(tokens[0]));
+  if (num_tokens < 0) {
+    term_writeln("Failed to parse the MapClick JSON");
+    return false;
+  }
+
+  if (num_tokens < 1 || tokens[0].type != JSMN_OBJECT) {
+    term_writeln("Top level MapClick item was not an object.");
+    return false;
+  }
+
+term_println(num_tokens, DEC);
+term_println(tokens[0].type, DEC);
+
   return true;
 }
 

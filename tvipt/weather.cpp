@@ -32,11 +32,12 @@ struct weather {
 
   // Current conditions
   char description[20];
-  short temperature;
-  short dewpoint;
-  short relative_humidity;
-  short winds;
-  short gust;
+  int temperature;
+  int dewpoint;
+  int relative_humidity;
+  int wind_speed;
+  int wind_direction;
+  int gust;
   
   // Future 
   struct day_forecast future[13];
@@ -150,12 +151,26 @@ bool get_mapclick_json(const char * mapclick_url, char * mapclick_json, size_t m
   return true;
 }
 
+
+char * scopy_json(char * dest, size_t dest_size, const char * json, jsmntok_t * src) {
+  // Copy the lesser of the length of the string plus one for the term, or the dest size
+  size_t max_chars_to_copy = min(dest_size, (src->end - src->start) +1);
+  return scopy(dest, json + src->start, max_chars_to_copy);
+}
+
+int atoi_json(const char * json, jsmntok_t * tok) {
+  char num_buf[16];
+  scopy_json(num_buf, sizeof(num_buf), json, tok);
+  return atoi(num_buf);
+}
+
 bool parse_mapclick_json(const char * mapclick_json, struct weather * weather) {
+  const int tokens_size = 500;
+  jsmntok_t tokens[tokens_size];
   jsmn_parser parser;
-  jsmntok_t tokens[500];
   
   jsmn_init(&parser);
-  int num_tokens = jsmn_parse(&parser, mapclick_json, strlen(mapclick_json), tokens, sizeof(tokens) / sizeof(tokens[0]));
+  int num_tokens = jsmn_parse(&parser, mapclick_json, strlen(mapclick_json), tokens, tokens_size);
   if (num_tokens < 0) {
     term_writeln("Failed to parse the MapClick JSON");
     return false;
@@ -166,10 +181,138 @@ bool parse_mapclick_json(const char * mapclick_json, struct weather * weather) {
     return false;
   }
 
-term_println(num_tokens, DEC);
-term_println(tokens[0].type, DEC);
+  char num_buf[8];
+  
+  int timestamp_i = find_json_prop(mapclick_json, tokens, num_tokens, 0, "creationDateLocal");
+  if (timestamp_i == -1) {
+    term_writeln("JSON missing creationDateLocal");
+    return false;
+  }
+  scopy_json(weather->timestamp, sizeof(weather->timestamp), mapclick_json, &tokens[timestamp_i]);
+
+  int location_i = find_json_prop(mapclick_json, tokens, num_tokens, 0, "location");
+  if (location_i == -1) {
+    term_writeln("JSON missing location");
+    return false;
+  }
+
+  int area_i = find_json_prop(mapclick_json, tokens, num_tokens, location_i, "areaDescription");
+  if (area_i == -1) {
+    term_writeln("JSON missing location.areaDescription");
+    return false;
+  }
+  scopy_json(weather->area, sizeof(weather->area), mapclick_json, &tokens[area_i]);
+
+  int data_i = find_json_prop(mapclick_json, tokens, num_tokens, 0, "data");
+  if (data_i == -1) {
+    term_writeln("JSON missing data");
+    return false;
+  }
+
+  int current_observation_i = find_json_prop(mapclick_json, tokens, num_tokens, 0, "currentobservation");
+  if (current_observation_i == -1) {
+    term_writeln("JSON missing currentobservation");
+    return false;
+  }
+
+  int description_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "Weather");
+  if (description_i == -1) {
+    term_writeln("JSON missing data.currentobservation.Weather");
+    return false;
+  }
+  scopy_json(weather->description, sizeof(weather->description), mapclick_json, &tokens[description_i]);
+
+  int temp_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "Temp");
+  if (temp_i == -1) {
+    term_writeln("JSON missing data.currentobservation.Temp");
+    return false;
+  }
+  weather->temperature = atoi_json(mapclick_json, &tokens[temp_i]);
+
+  int dewpoint_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "Dewp");
+  if (dewpoint_i == -1) {
+    term_writeln("JSON missing data.currentobservation.Dewp");
+    return false;
+  }
+  weather->dewpoint = atoi_json(mapclick_json, &tokens[dewpoint_i]);
+
+  int relative_humidity_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "Relh");
+  if (relative_humidity_i == -1) {
+    term_writeln("JSON missing data.currentobservation.Relh");
+    return false;
+  }
+  weather->relative_humidity = atoi_json(mapclick_json, &tokens[relative_humidity_i]);
+  
+  int wind_speed_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "Winds");
+  if (wind_speed_i == -1) {
+    term_writeln("JSON missing data.currentobservation.Winds");
+    return false;
+  }
+  weather->wind_speed = atoi_json(mapclick_json, &tokens[wind_speed_i]);
+
+  int wind_direction_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "Windd");
+  if (wind_direction_i == -1) {
+    term_writeln("JSON missing data.currentobservation.Windd");
+    return false;
+  }
+  weather->wind_direction = atoi_json(mapclick_json, &tokens[wind_direction_i]);
+
+  int gust_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "Gust");
+  if (gust_i == -1) {
+    term_writeln("JSON missing data.currentobservation.Gust");
+    return false;
+  }
+  weather->gust = atoi_json(mapclick_json, &tokens[gust_i]);
 
   return true;
+}
+
+const char * wind_direction(int angle) {
+  const char* dirs[]   = { "N", "NE", "E", "SE", "S", "SW", "W", "NW", "N" };
+  const short angles[] = { 0,   45,   90,  135,  180, 225,  270, 315,  360 };
+  
+  short min_diff;
+  const char * dir_for_min_diff;
+  
+  // Quick and dirty "find closest direction"
+  for (short i = 0; i < sizeof(dirs); i++) {
+    short diff = abs(angle - angles[i]);
+    if (diff < min_diff) {
+      min_diff = diff;
+      dir_for_min_diff = dirs[i];
+    }
+  }
+
+  return dir_for_min_diff;
+}
+
+void print_weather(struct weather * weather) {
+  term_write(weather->area);
+  term_write(" (");
+  term_write(weather->timestamp);
+  term_writeln(")");
+
+  term_write(" Weather:           ");
+  term_writeln(weather->description);
+
+  term_write(" Temperature:       ");
+  term_print(weather->temperature, DEC);
+  term_writeln(" F");
+
+  term_write(" Relative Humidity: ");
+  term_print(weather->relative_humidity, DEC);
+  term_writeln(" %");
+
+  term_write(" Dewpoint:          ");
+  term_print(weather->dewpoint, DEC);
+  term_writeln(" F");
+
+  term_write(" Wind:              ");
+  term_print(weather->wind_speed, DEC);
+  term_write(" mph (gusts ");
+  term_print(weather->gust, DEC);
+  term_write(" mph) from the ");
+  term_writeln(wind_direction(weather->wind_direction));
 }
 
 void weather(const char * zip) {
@@ -191,5 +334,7 @@ void weather(const char * zip) {
     term_writeln("Could not parse the forecast JSON.");
     return;
   }
+
+  print_weather(&weather);
 }
 

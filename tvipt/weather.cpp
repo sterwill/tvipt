@@ -28,16 +28,19 @@ struct day_forecast {
 
 struct weather {
   char timestamp[32];
-  char area[24];
+  char area[32];
 
   // Current conditions
-  char description[20];
+  char station_id[24];
+  char station_name[64];
+  char description[24];
   int temperature;
   int dewpoint;
   int relative_humidity;
   int wind_speed;
   int wind_direction;
   int gust;
+  char sea_level_pressure[6];
   
   // Future 
   struct day_forecast future[13];
@@ -215,6 +218,20 @@ bool parse_mapclick_json(const char * mapclick_json, struct weather * weather) {
     return false;
   }
 
+  int station_id_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "id");
+  if (station_id_i == -1) {
+    term_writeln("JSON missing data.currentobservation.id");
+    return false;
+  }
+  scopy_json(weather->station_id, sizeof(weather->station_id), mapclick_json, &tokens[station_id_i]);
+
+  int station_name_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "name");
+  if (station_name_i == -1) {
+    term_writeln("JSON missing data.currentobservation.name");
+    return false;
+  }
+  scopy_json(weather->station_name, sizeof(weather->station_name), mapclick_json, &tokens[station_name_i]);
+
   int description_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "Weather");
   if (description_i == -1) {
     term_writeln("JSON missing data.currentobservation.Weather");
@@ -264,10 +281,21 @@ bool parse_mapclick_json(const char * mapclick_json, struct weather * weather) {
   }
   weather->gust = atoi_json(mapclick_json, &tokens[gust_i]);
 
+  int sea_level_pressure_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "SLP");
+  if (sea_level_pressure_i == -1) {
+    term_writeln("JSON missing data.currentobservation.SLP");
+    return false;
+  }
+  scopy_json(weather->sea_level_pressure, sizeof(weather->sea_level_pressure), mapclick_json, &tokens[sea_level_pressure_i]);
+
   return true;
 }
 
 const char * wind_direction(int angle) {
+  if (angle = 999) {
+    return "?";
+  }
+  
   const char* dirs[]   = { "N", "NE", "E", "SE", "S", "SW", "W", "NW", "N" };
   const short angles[] = { 0,   45,   90,  135,  180, 225,  270, 315,  360 };
   
@@ -292,22 +320,32 @@ void print_weather(struct weather * weather) {
   term_write(weather->timestamp);
   term_writeln(")");
 
-  term_write(" Weather:           ");
+  term_write(" Station:      ");
+  term_write(weather->station_id);
+  term_write(" (");
+  term_write(weather->station_name);
+  term_writeln(")");
+
+  term_write(" Weather:      ");
   term_writeln(weather->description);
 
-  term_write(" Temperature:       ");
+  term_write(" Temperature:  ");
   term_print(weather->temperature, DEC);
   term_writeln(" F");
 
-  term_write(" Relative Humidity: ");
+  term_write(" Humidity:     ");
   term_print(weather->relative_humidity, DEC);
   term_writeln(" %");
 
-  term_write(" Dewpoint:          ");
+  term_write(" Dewpoint:     ");
   term_print(weather->dewpoint, DEC);
   term_writeln(" F");
 
-  term_write(" Wind:              ");
+  term_write(" Pressure:     ");
+  term_write(weather->sea_level_pressure);
+  term_writeln(" in/Hg");
+
+  term_write(" Wind:         ");
   term_print(weather->wind_speed, DEC);
   term_write(" mph (gusts ");
   term_print(weather->gust, DEC);

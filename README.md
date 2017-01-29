@@ -18,6 +18,8 @@ The ATWINC1500 chip offloads Wifi, IP, TCP, and even SSL from the ATSAMD21 main 
 
 # Copyright and License
 
-Source code in the tvipt/ directory is Copyright 2016 Shaw Terwilliger and is licened under the GNU General Public License version 2.
+Most source code in the tvipt/ directory is Copyright 2016 Shaw Terwilliger and is licened under the GNU General Public License version 2.
 
 tvipt/busybox.cpp contains code from the BusyBox project (https://busybox.net/).  License and copyright information are available in the header of the file (GPLv2).
+
+tvipt/jsmn.h and tvipt/jsmn.c contains code from jsmn (https://github.com/zserge/jsmn).  License and copyright information are available in the headers of those files (MIT).

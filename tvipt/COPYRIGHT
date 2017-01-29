@@ -1,4 +1,4 @@
-All code in this directory *except* busybox.cpp is:
+All code in this directory *except* [busybox.cpp, jsmn.h, jsmn.c] is:
 
 Copyright 2016 Shaw Terwilliger
 

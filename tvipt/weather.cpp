@@ -4,6 +4,8 @@
 #include "util.h"
 #include "jsmn.h"
 
+#define FUTURE_PERIODS 14
+
 struct get_mapclick_url_ctx {
   char * url;
   size_t url_size;
@@ -20,10 +22,12 @@ struct get_mapclick_data_ctx {
   size_t data_bytes_read;
 };
 
-struct day_forecast {
-  short high_temperature;
-  char weather[20];
-  char text[100];
+struct period_forecast {
+  char name[24];
+  char weather[32];
+  char temperature_label[5];
+  char temperature[4];
+  char precipitation[4];
 };
 
 struct weather {
@@ -34,16 +38,16 @@ struct weather {
   char station_id[24];
   char station_name[64];
   char description[24];
-  int temperature;
-  int dewpoint;
-  int relative_humidity;
-  int wind_speed;
-  int wind_direction;
-  int gust;
+  short temperature;
+  short dewpoint;
+  short relative_humidity;
+  short wind_speed;
+  short wind_direction;
+  short gust;
   char sea_level_pressure[6];
   
   // Future 
-  struct day_forecast future[13];
+  struct period_forecast future[FUTURE_PERIODS];
 };
 
 void get_mapclick_url_header_cb(struct http_request * req, const char * header, const char * value) {
@@ -75,8 +79,13 @@ boolean get_mapclick_url(const char * zip, char * mapclick_url, size_t mapclick_
   req.body_cb = NULL;
   req.caller_ctx = &ctx;
 
+  dbg_serial.println(req.host);
+  dbg_serial.println(req.path_and_query);
+  
   memset(mapclick_url, '\0', mapclick_url_size);
   http_get(&req);
+
+  dbg_serial.println(req.status, DEC);
 
   if (req.status != 302) {
     term_write("HTTP error getting MapClick URL: ");
@@ -137,8 +146,13 @@ bool get_mapclick_json(const char * mapclick_url, char * mapclick_json, size_t m
   req.body_cb = get_mapclick_data_body_cb;
   req.caller_ctx = &ctx;
 
+  dbg_serial.println(req.host);
+  dbg_serial.println(req.path_and_query);
+  
   memset(mapclick_json, '\0', mapclick_json_size);
   http_get(&req);
+
+  dbg_serial.println(req.status, DEC);
 
   if (req.status != 200) {
     term_write("HTTP error getting MapClick data: ");
@@ -184,7 +198,8 @@ bool parse_mapclick_json(const char * mapclick_json, struct weather * weather) {
     return false;
   }
 
-  char num_buf[8];
+  //////////////////////////////////////////////////////////////////
+  // root properties
   
   int timestamp_i = find_json_prop(mapclick_json, tokens, num_tokens, 0, "creationDateLocal");
   if (timestamp_i == -1) {
@@ -193,18 +208,124 @@ bool parse_mapclick_json(const char * mapclick_json, struct weather * weather) {
   }
   scopy_json(weather->timestamp, sizeof(weather->timestamp), mapclick_json, &tokens[timestamp_i]);
 
+  //////////////////////////////////////////////////////////////////
+  // location object
+  
   int location_i = find_json_prop(mapclick_json, tokens, num_tokens, 0, "location");
   if (location_i == -1) {
     term_writeln("JSON missing location");
     return false;
   }
 
-  int area_i = find_json_prop(mapclick_json, tokens, num_tokens, location_i, "areaDescription");
-  if (area_i == -1) {
+  int location_area_i = find_json_prop(mapclick_json, tokens, num_tokens, location_i, "areaDescription");
+  if (location_area_i == -1) {
     term_writeln("JSON missing location.areaDescription");
     return false;
   }
-  scopy_json(weather->area, sizeof(weather->area), mapclick_json, &tokens[area_i]);
+  scopy_json(weather->area, sizeof(weather->area), mapclick_json, &tokens[location_area_i]);
+
+  //////////////////////////////////////////////////////////////////
+  // currentobservation object
+  
+  int current_observation_i = find_json_prop(mapclick_json, tokens, num_tokens, 0, "currentobservation");
+  if (current_observation_i == -1) {
+    term_writeln("JSON missing currentobservation");
+    return false;
+  }
+
+  int current_observation_station_id_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "id");
+  if (current_observation_station_id_i == -1) {
+    term_writeln("JSON missing data.currentobservation.id");
+    return false;
+  }
+  scopy_json(weather->station_id, sizeof(weather->station_id), mapclick_json, &tokens[current_observation_station_id_i]);
+
+  int current_observation_station_name_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "name");
+  if (current_observation_station_name_i == -1) {
+    term_writeln("JSON missing data.currentobservation.name");
+    return false;
+  }
+  scopy_json(weather->station_name, sizeof(weather->station_name), mapclick_json, &tokens[current_observation_station_name_i]);
+
+  int current_observation_description_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "Weather");
+  if (current_observation_description_i == -1) {
+    term_writeln("JSON missing data.currentobservation.Weather");
+    return false;
+  }
+  scopy_json(weather->description, sizeof(weather->description), mapclick_json, &tokens[current_observation_description_i]);
+
+  int current_observation_temp_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "Temp");
+  if (current_observation_temp_i == -1) {
+    term_writeln("JSON missing data.currentobservation.Temp");
+    return false;
+  }
+  weather->temperature = atoi_json(mapclick_json, &tokens[current_observation_temp_i]);
+
+  int current_observation_dewpoint_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "Dewp");
+  if (current_observation_dewpoint_i == -1) {
+    term_writeln("JSON missing data.currentobservation.Dewp");
+    return false;
+  }
+  weather->dewpoint = atoi_json(mapclick_json, &tokens[current_observation_dewpoint_i]);
+
+  int current_observation_relative_humidity_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "Relh");
+  if (current_observation_relative_humidity_i == -1) {
+    term_writeln("JSON missing data.currentobservation.Relh");
+    return false;
+  }
+  weather->relative_humidity = atoi_json(mapclick_json, &tokens[current_observation_relative_humidity_i]);
+  
+  int current_observation_wind_speed_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "Winds");
+  if (current_observation_wind_speed_i == -1) {
+    term_writeln("JSON missing data.currentobservation.Winds");
+    return false;
+  }
+  weather->wind_speed = atoi_json(mapclick_json, &tokens[current_observation_wind_speed_i]);
+
+  int current_observation_wind_direction_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "Windd");
+  if (current_observation_wind_direction_i == -1) {
+    term_writeln("JSON missing data.currentobservation.Windd");
+    return false;
+  }
+  weather->wind_direction = atoi_json(mapclick_json, &tokens[current_observation_wind_direction_i]);
+
+  int current_observation_gust_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "Gust");
+  if (current_observation_gust_i == -1) {
+    term_writeln("JSON missing data.currentobservation.Gust");
+    return false;
+  }
+  weather->gust = atoi_json(mapclick_json, &tokens[current_observation_gust_i]);
+
+  int current_observation_sea_level_pressure_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "SLP");
+  if (current_observation_sea_level_pressure_i == -1) {
+    term_writeln("JSON missing data.currentobservation.SLP");
+    return false;
+  }
+  scopy_json(weather->sea_level_pressure, sizeof(weather->sea_level_pressure), mapclick_json, &tokens[current_observation_sea_level_pressure_i]);
+
+  //////////////////////////////////////////////////////////////////
+  // time object
+  
+  int time_i = find_json_prop(mapclick_json, tokens, num_tokens, 0, "time");
+  if (time_i == -1) {
+    term_writeln("JSON missing time");
+    return false;
+  }
+
+  int time_period_name_i = find_json_prop(mapclick_json, tokens, num_tokens, time_i, "startPeriodName");
+  if (time_period_name_i == -1) {
+    term_writeln("JSON missing time.startPeriodName");
+    return false;
+  }
+
+  int time_temp_label_i = find_json_prop(mapclick_json, tokens, num_tokens, time_i, "tempLabel");
+  if (time_temp_label_i == -1) {
+    term_writeln("JSON missing tempLabel");
+    return false;
+  }
+
+  //////////////////////////////////////////////////////////////////
+  // data object
 
   int data_i = find_json_prop(mapclick_json, tokens, num_tokens, 0, "data");
   if (data_i == -1) {
@@ -212,81 +333,44 @@ bool parse_mapclick_json(const char * mapclick_json, struct weather * weather) {
     return false;
   }
 
-  int current_observation_i = find_json_prop(mapclick_json, tokens, num_tokens, 0, "currentobservation");
-  if (current_observation_i == -1) {
-    term_writeln("JSON missing currentobservation");
+  int data_temperature_i = find_json_prop(mapclick_json, tokens, num_tokens, data_i, "temperature");
+  if (data_temperature_i == -1) {
+    term_writeln("JSON missing data.temperature");
     return false;
   }
 
-  int station_id_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "id");
-  if (station_id_i == -1) {
-    term_writeln("JSON missing data.currentobservation.id");
+  int data_pop_i = find_json_prop(mapclick_json, tokens, num_tokens, data_i, "pop");
+  if (data_pop_i== -1) {
+    term_writeln("JSON missing data.pop");
     return false;
   }
-  scopy_json(weather->station_id, sizeof(weather->station_id), mapclick_json, &tokens[station_id_i]);
 
-  int station_name_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "name");
-  if (station_name_i == -1) {
-    term_writeln("JSON missing data.currentobservation.name");
+  int data_weather_i = find_json_prop(mapclick_json, tokens, num_tokens, data_i, "weather");
+  if (data_weather_i == -1) {
+    term_writeln("JSON missing data.weather");
     return false;
   }
-  scopy_json(weather->station_name, sizeof(weather->station_name), mapclick_json, &tokens[station_name_i]);
 
-  int description_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "Weather");
-  if (description_i == -1) {
-    term_writeln("JSON missing data.currentobservation.Weather");
-    return false;
-  }
-  scopy_json(weather->description, sizeof(weather->description), mapclick_json, &tokens[description_i]);
-
-  int temp_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "Temp");
-  if (temp_i == -1) {
-    term_writeln("JSON missing data.currentobservation.Temp");
-    return false;
-  }
-  weather->temperature = atoi_json(mapclick_json, &tokens[temp_i]);
-
-  int dewpoint_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "Dewp");
-  if (dewpoint_i == -1) {
-    term_writeln("JSON missing data.currentobservation.Dewp");
-    return false;
-  }
-  weather->dewpoint = atoi_json(mapclick_json, &tokens[dewpoint_i]);
-
-  int relative_humidity_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "Relh");
-  if (relative_humidity_i == -1) {
-    term_writeln("JSON missing data.currentobservation.Relh");
-    return false;
-  }
-  weather->relative_humidity = atoi_json(mapclick_json, &tokens[relative_humidity_i]);
+  //////////////////////////////////////////////////////////////////
+  // future periods (14 of them, pulled from arrays in several objects)
   
-  int wind_speed_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "Winds");
-  if (wind_speed_i == -1) {
-    term_writeln("JSON missing data.currentobservation.Winds");
-    return false;
-  }
-  weather->wind_speed = atoi_json(mapclick_json, &tokens[wind_speed_i]);
+  for (int i = 0; i < 14; i++) {
+    struct period_forecast * period = &weather->future[i];
 
-  int wind_direction_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "Windd");
-  if (wind_direction_i == -1) {
-    term_writeln("JSON missing data.currentobservation.Windd");
-    return false;
-  }
-  weather->wind_direction = atoi_json(mapclick_json, &tokens[wind_direction_i]);
+    jsmntok_t * name_tok = &tokens[time_period_name_i + 1 + i];
+    scopy_json(period->name, sizeof(period->name), mapclick_json, name_tok);
 
-  int gust_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "Gust");
-  if (gust_i == -1) {
-    term_writeln("JSON missing data.currentobservation.Gust");
-    return false;
-  }
-  weather->gust = atoi_json(mapclick_json, &tokens[gust_i]);
+    jsmntok_t * weather_tok = &tokens[data_weather_i + 1 + i];
+    scopy_json(period->weather, sizeof(period->weather), mapclick_json, weather_tok);
 
-  int sea_level_pressure_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "SLP");
-  if (sea_level_pressure_i == -1) {
-    term_writeln("JSON missing data.currentobservation.SLP");
-    return false;
+    jsmntok_t * temperature_tok = &tokens[data_temperature_i + 1 + i];
+    scopy_json(period->temperature, sizeof(period->temperature), mapclick_json, temperature_tok);
+
+    jsmntok_t * precipitation_tok = &tokens[data_pop_i + 1 + i];
+    if (precipitation_tok->type == JSMN_STRING) {
+      scopy_json(period->precipitation, sizeof(period->precipitation), mapclick_json, precipitation_tok);
+    }
   }
-  scopy_json(weather->sea_level_pressure, sizeof(weather->sea_level_pressure), mapclick_json, &tokens[sea_level_pressure_i]);
 
   return true;
 }
@@ -315,6 +399,8 @@ const char * wind_direction(int angle) {
 }
 
 void print_weather(struct weather * weather) {
+  term_writeln("");
+  
   term_write(weather->area);
   term_write(" (");
   term_write(weather->timestamp);
@@ -351,6 +437,95 @@ void print_weather(struct weather * weather) {
   term_print(weather->gust, DEC);
   term_write(" mph) from the ");
   term_writeln(wind_direction(weather->wind_direction));
+
+  term_writeln("");
+
+  // 9 printable chars each column, no terminator in this buffer
+  char col[9];
+
+  // If the weather starts at tonight, instead of today, today's 
+  // high temp cell needs to be blank, and we'll just print 13 of the
+  // periods so each day's data remains in the same column.
+  bool skip_first_day = strcmp(weather->future[0].name, "Tonight") == 0;
+  int periods_to_print = skip_first_day ? 13 : 14;
+  int second_name_start = skip_first_day ? 1 : 2;
+  int first_day_index = skip_first_day ? 1 : 0;
+  int first_night_index = skip_first_day ? 0 : 1;
+  
+  // Day of week (empty left legend)
+  term_write("          Today     ");
+  for (int i = second_name_start; i < periods_to_print; i += 2) {
+    const char * str = weather->future[i].name;
+    // Copy without termination, leaving padding spaces
+    memset(col, ' ', sizeof(col));
+    memcpy(col, str, min(strlen(str), sizeof(col))); 
+    term_write(col, sizeof(col));
+    term_write(" ");
+  }
+  term_writeln("");
+
+  // High temps 
+  term_write("high      ");
+  if (skip_first_day) {
+    term_write("          ");
+  }
+  for (int i = first_day_index; i < periods_to_print; i += 2) {
+    const char * str = weather->future[i].temperature;
+    // Copy without termination, leaving padding spaces
+    memset(col, ' ', sizeof(col));
+    memcpy(col, str, min(strlen(str), sizeof(col))); 
+    term_write(col, sizeof(col));
+    term_write(" ");
+  }
+  term_writeln("");
+
+  // Low temps 
+  term_write("low       ");
+  for (int i = first_night_index; i < periods_to_print; i += 2) {
+    const char * str = weather->future[i].temperature;
+    // Copy without termination, leaving padding spaces
+    memset(col, ' ', sizeof(col));
+    memcpy(col, str, min(strlen(str), sizeof(col))); 
+    term_write(col, sizeof(col));
+    term_write(" ");
+  }
+  term_writeln("");
+
+  // Daytime precipitation
+  term_write("day pcp.  ");
+  if (skip_first_day) {
+    term_write("          ");
+  }
+  for (int i = first_day_index; i < periods_to_print; i += 2) {
+    const char * str = weather->future[i].precipitation;
+    // Copy without termination, leaving padding spaces
+    memset(col, ' ', sizeof(col));
+    memcpy(col, str, min(strlen(str), sizeof(col))); 
+    term_write(col, sizeof(col));
+    term_write(" ");
+  }
+  term_writeln("");
+
+  // Nighttime precipitation
+  term_write("nite pcp. ");
+  for (int i = first_night_index; i < periods_to_print; i += 2) {
+    const char * str = weather->future[i].precipitation;
+    // Copy without termination, leaving padding spaces
+    memset(col, ' ', sizeof(col));
+    memcpy(col, str, min(strlen(str), sizeof(col))); 
+    term_write(col, sizeof(col));
+    term_write(" ");
+  }
+  term_writeln("");
+
+  for (int i = 0; i < 5; i++) {
+    term_writeln("");
+    term_write(weather->future[i].name);
+    term_write(": ");
+    term_write(weather->future[i].weather);
+  }
+
+  term_writeln("");
 }
 
 void weather(const char * zip) {
@@ -368,6 +543,8 @@ void weather(const char * zip) {
   }
 
   struct weather weather;
+  memset(&weather, 0, sizeof(weather));
+  
   if (!parse_mapclick_json(mapclick_json, &weather)) {
     term_writeln("Could not parse the forecast JSON.");
     return;

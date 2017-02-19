@@ -10,6 +10,7 @@ set(CMAKE_CXX_STANDARD 11)
 
 include_directories(
     ~/.arduino15/packages/adafruit/hardware/samd/1.0.13/cores/arduino
+    ~/.arduino15/packages/adafruit/hardware/samd/1.0.13/variants/arduino_zero
     ~/Arduino/libraries/WiFi101/src
 )
 

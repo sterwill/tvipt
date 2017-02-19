@@ -28,4 +28,5 @@ arduino-builder -compile \
   -prefs="runtime.tools.bossac.path=${HOME}/.arduino15/packages/arduino/tools/bossac/1.6.1-arduino" \
   -prefs="runtime.tools.CMSIS.path=${HOME}/.arduino15/packages/arduino/tools/CMSIS/4.0.0-atmel" \
   -prefs="runtime.tools.arm-none-eabi-gcc.path=${HOME}/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/4.8.3-2014q1" \
-  "${BASE}/tvipt.ino"
+  $@ \
+  "${BASE}/tvipt.ino" 

@@ -3,6 +3,6 @@
 
 #include <stdint.h>
 
-bool telnets_connect(const char * host, uint16_t port, const char * username);
+bool telnets_connect(const char *host, uint16_t port, const char *username);
 
 #endif

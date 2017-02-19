@@ -151,75 +151,75 @@
 #define TVIPT_CLEAR "\x1a"
 
 void term_init() {
-  dbg_serial.begin(115200);
-  term_serial.end();
-  term_serial.begin(19200);
+    dbg_serial.begin(115200);
+    term_serial.end();
+    term_serial.begin(19200);
 
-  while (!term_serial) {}
-  
-  term_serial.setTimeout(-1);
-  term_serial.write(TVIPT_INIT);
-  term_serial.write(TVIPT_CLEAR);
+    while (!term_serial) {}
+
+    term_serial.setTimeout(-1);
+    term_serial.write(TVIPT_INIT);
+    term_serial.write(TVIPT_CLEAR);
 }
 
 size_t term_write(const char c) {
-  return term_serial.write(c);
+    return term_serial.write(c);
 }
 
-size_t term_write(const uint8_t * buf, size_t size) {
-  return term_serial.write(buf, size);
+size_t term_write(const uint8_t *buf, size_t size) {
+    return term_serial.write(buf, size);
 }
 
-size_t term_write(const char * buf, size_t size) {
-  return term_serial.write(buf, size);
+size_t term_write(const char *buf, size_t size) {
+    return term_serial.write(buf, size);
 }
 
-void term_write(const char * val) {
-  term_serial.write(val);
+void term_write(const char *val) {
+    term_serial.write(val);
 }
 
-void term_writeln(const char * val) {
-  term_serial.write(val);
-  term_serial.write("\r\n");
+void term_writeln(const char *val) {
+    term_serial.write(val);
+    term_serial.write("\r\n");
 }
 
-void term_write_masked(const char * val) {
-  while (*val++ != '\0') {
-    term_serial.write("*");
-  }
+void term_write_masked(const char *val) {
+    while (*val++ != '\0') {
+        term_serial.write("*");
+    }
 }
 
-void term_writeln_masked(const char * val) {
-  term_write_masked(val);
-  term_serial.write("\r\n");
+void term_writeln_masked(const char *val) {
+    term_write_masked(val);
+    term_serial.write("\r\n");
 }
 
 void term_print(long val, int format) {
-  term_serial.print(val, format);
+    term_serial.print(val, format);
 }
 
 void term_println(long val, int format) {
-  term_serial.print(val, format);
-  term_serial.write("\r\n");
+    term_serial.print(val, format);
+    term_serial.write("\r\n");
 }
 
-int term_readln(char * buf, int max, readln_echo echo) {
-  char * start = buf;
-  char * end = start + max;
-  while (buf < end) {
-    int c = term_serial.read();
-    if (c != -1) {
-      if (c == '\0' || c == '\r' || c == '\n') {
-        break;
-      }
-      if (echo == READLN_ECHO) {
-        term_write(c);
-      } else if (echo = READLN_MASKED) {
-        term_write('*');
-      }
-      *buf++ = c;
+int term_readln(char *buf, int max, readln_echo echo) {
+    char *start = buf;
+    char *end = start + max;
+    while (buf < end) {
+        int c = term_serial.read();
+        if (c != -1) {
+            if (c == '\0' || c == '\r' || c == '\n') {
+                break;
+            }
+            if (echo == READLN_ECHO) {
+                term_write(c);
+            } else if (echo = READLN_MASKED) {
+                term_write('*');
+            }
+            *buf++ = c;
+        }
     }
-  }
-  return buf - start;
+    return buf - start;
 }
 

@@ -3,6 +3,6 @@
 
 #include <stdint.h>
 
-bool tcp_connect(const char * host, uint16_t port);
+bool tcp_connect(const char *host, uint16_t port);
 
 #endif

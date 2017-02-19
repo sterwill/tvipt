@@ -8,13 +8,26 @@ project(tvipt)
 
 set(CMAKE_CXX_STANDARD 11)
 
+# Expand the user's home directory
+get_filename_component(ARDUINO_PKG_DIR ~/.arduino15/packages ABSOLUTE)
+get_filename_component(ARDUINO_LIB_DIR ~/Arduino/libraries ABSOLUTE)
+
+# Set the cross-compilers so it can discover the correct system
+# include paths automatically.
+set(CMAKE_C_COMPILER ${ARDUINO_PKG_DIR}/arduino/tools/arm-none-eabi-gcc/4.8.3-2014q1/bin/arm-none-eabi-gcc)
+set(CMAKE_CXX_COMPILER ${ARDUINO_PKG_DIR}/arduino/tools/arm-none-eabi-gcc/4.8.3-2014q1/bin/arm-none-eabi-gcc)
+
+# Add the SAMD core, variant, and all libraries
 include_directories(
-    ~/.arduino15/packages/adafruit/hardware/samd/1.0.13/cores/arduino
-    ~/.arduino15/packages/adafruit/hardware/samd/1.0.13/variants/arduino_zero
-    ~/Arduino/libraries/WiFi101/src
+    ${ARDUINO_PKG_DIR}/adafruit/hardware/samd/1.0.13/cores/arduino
+    ${ARDUINO_PKG_DIR}/adafruit/hardware/samd/1.0.13/variants/arduino_zero
+    ${ARDUINO_PKG_DIR}/arduino/tools/CMSIS/4.0.0-atmel
+    ${ARDUINO_LIB_DIR}/WiFi101/src
 )
 
+# Consider all source-ish files to be source code
 file(GLOB TVIPT_SOURCES *.ino *.cpp *.h *.c)
 set(SOURCE_FILES ${TVIPT_SOURCES})
 
+# Pretend we'll build an executable
 add_executable(tvipt ${SOURCE_FILES})

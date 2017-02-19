@@ -8,8 +8,10 @@ project(tvipt)
 
 set(CMAKE_CXX_STANDARD 11)
 
-# Expand the user's home directory
+# Where Arduino boards get installed.
 get_filename_component(ARDUINO_PKG_DIR ~/.arduino15/packages ABSOLUTE)
+
+# Where Arduino libraries get installed.
 get_filename_component(ARDUINO_LIB_DIR ~/Arduino/libraries ABSOLUTE)
 
 # Set the cross-compilers so it can discover the correct system

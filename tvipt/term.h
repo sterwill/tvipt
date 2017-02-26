@@ -11,8 +11,11 @@
 #define TERM_XOFF               0x13
 #define TERM_XON                0x11
 #define TERM_ESCAPE             0x1B
-#define TERM_ENABLE_ALT_CHAR    0x4A
-#define TERM_DISABLE_ALT_CHAR   0x4B
+
+#define TERM_CLEAR_TO_SPACES    '+'
+#define TERM_ENABLE_ALT_CHAR    'J'
+#define TERM_DISABLE_ALT_CHAR   'K'
+#define TERM_MOVE_TO_POS        '=' // r c
 
 #define dbg_serial    Serial
 #define term_serial   Serial1
@@ -46,6 +49,8 @@ void term_print(long val, int format = DEC);
 void term_println(long val, int format = DEC);
 
 int term_readln(char *buf, int max, readln_echo echo);
+
+void term_move(byte row, byte col);
 
 #endif
 

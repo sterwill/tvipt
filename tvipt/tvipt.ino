@@ -2,6 +2,8 @@
 #include "wifi.h"
 #include "cli.h"
 
+#include "config.h"
+
 void setup() {
     term_init();
     wifi_init();
@@ -15,9 +17,8 @@ void setup() {
     term_writeln("tvipt/1 (TeleVideo Personal Terminal) Operating System");
     term_writeln("");
 
-    // Set the boot-time defaults here
-    //cli_boot("My Wifi Net", "p455w0rd", 5000, "server.example.com", 992, "myuser");
-    cli_boot(NULL, NULL, 0, NULL, 0, NULL);
+    cli_boot(DEFAULT_WIFI_SSID, DEFAULT_WIFI_PASSWORD, DEFAULT_WIFI_JOIN_TIMEOUT,
+             DEFAULT_TELNETS_HOST, DEFAULT_TELNETS_PORT, DEFAULT_TELNETS_USERNAME);
 }
 
 void loop() {

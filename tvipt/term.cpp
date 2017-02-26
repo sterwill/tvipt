@@ -223,3 +223,19 @@ int term_readln(char *buf, int max, readln_echo echo) {
     return buf - start;
 }
 
+
+// Row is 1-24, col is 1-80
+void term_move(byte row, byte col) {
+    if (row < 1) { row = 1; }
+    if (row > 24) { row = 24; }
+    if (col < 1) { col = 1; }
+    if (col > 80) { col = 80; }
+
+    term_serial.write(TERM_ESCAPE);
+    term_serial.write(TERM_MOVE_TO_POS);
+    // ASCII 0x20 (SPACE) is row/column value 1, and subsequent ASCII values
+    // enumerate the row/column value space up to ASCII 0x6F ('o') for value
+    // 80.
+    term_serial.write(row + 0x1F);
+    term_serial.write(col + 0x1F);
+}

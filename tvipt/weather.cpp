@@ -171,7 +171,7 @@ bool get_mapclick_json(const char *mapclick_url, char *mapclick_json, size_t map
 
 char *scopy_json(char *dest, size_t dest_size, const char *json, jsmntok_t *src) {
     // Copy the lesser of the length of the string plus one for the term, or the dest size
-    size_t max_chars_to_copy = min(dest_size, (src->end - src->start) + 1);
+    size_t max_chars_to_copy = min(dest_size, (size_t) ((src->end - src->start) + 1));
     return scopy(dest, json + src->start, max_chars_to_copy);
 }
 
@@ -265,7 +265,7 @@ bool parse_mapclick_json(const char *mapclick_json, struct weather *weather) {
         term_writeln("JSON missing data.currentobservation.Temp");
         return false;
     }
-    weather->temperature = atoi_json(mapclick_json, &tokens[current_observation_temp_i]);
+    weather->temperature = (short) atoi_json(mapclick_json, &tokens[current_observation_temp_i]);
 
     int current_observation_dewpoint_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i,
                                                         "Dewp");
@@ -273,7 +273,7 @@ bool parse_mapclick_json(const char *mapclick_json, struct weather *weather) {
         term_writeln("JSON missing data.currentobservation.Dewp");
         return false;
     }
-    weather->dewpoint = atoi_json(mapclick_json, &tokens[current_observation_dewpoint_i]);
+    weather->dewpoint = (short) atoi_json(mapclick_json, &tokens[current_observation_dewpoint_i]);
 
     int current_observation_relative_humidity_i = find_json_prop(mapclick_json, tokens, num_tokens,
                                                                  current_observation_i, "Relh");
@@ -281,7 +281,7 @@ bool parse_mapclick_json(const char *mapclick_json, struct weather *weather) {
         term_writeln("JSON missing data.currentobservation.Relh");
         return false;
     }
-    weather->relative_humidity = atoi_json(mapclick_json, &tokens[current_observation_relative_humidity_i]);
+    weather->relative_humidity = (short) atoi_json(mapclick_json, &tokens[current_observation_relative_humidity_i]);
 
     int current_observation_wind_speed_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i,
                                                           "Winds");
@@ -289,7 +289,7 @@ bool parse_mapclick_json(const char *mapclick_json, struct weather *weather) {
         term_writeln("JSON missing data.currentobservation.Winds");
         return false;
     }
-    weather->wind_speed = atoi_json(mapclick_json, &tokens[current_observation_wind_speed_i]);
+    weather->wind_speed = (short) atoi_json(mapclick_json, &tokens[current_observation_wind_speed_i]);
 
     int current_observation_wind_direction_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i,
                                                               "Windd");
@@ -297,14 +297,14 @@ bool parse_mapclick_json(const char *mapclick_json, struct weather *weather) {
         term_writeln("JSON missing data.currentobservation.Windd");
         return false;
     }
-    weather->wind_direction = atoi_json(mapclick_json, &tokens[current_observation_wind_direction_i]);
+    weather->wind_direction = (short) atoi_json(mapclick_json, &tokens[current_observation_wind_direction_i]);
 
     int current_observation_gust_i = find_json_prop(mapclick_json, tokens, num_tokens, current_observation_i, "Gust");
     if (current_observation_gust_i == -1) {
         term_writeln("JSON missing data.currentobservation.Gust");
         return false;
     }
-    weather->gust = atoi_json(mapclick_json, &tokens[current_observation_gust_i]);
+    weather->gust = (short) atoi_json(mapclick_json, &tokens[current_observation_gust_i]);
 
     int current_observation_sea_level_pressure_i = find_json_prop(mapclick_json, tokens, num_tokens,
                                                                   current_observation_i, "SLP");
@@ -388,19 +388,19 @@ bool parse_mapclick_json(const char *mapclick_json, struct weather *weather) {
 }
 
 const char *wind_direction(int angle) {
-    if (angle = 999) {
+    if (angle == 999) {
         return "?";
     }
 
     const char *dirs[] = {"N", "NE", "E", "SE", "S", "SW", "W", "NW", "N"};
     const short angles[] = {0, 45, 90, 135, 180, 225, 270, 315, 360};
 
-    short min_diff;
-    const char *dir_for_min_diff;
+    short min_diff = 360;
+    const char *dir_for_min_diff = NULL;
 
     // Quick and dirty "find closest direction"
     for (short i = 0; i < sizeof(dirs); i++) {
-        short diff = abs(angle - angles[i]);
+        short diff = (short) abs(angle - angles[i]);
         if (diff < min_diff) {
             min_diff = diff;
             dir_for_min_diff = dirs[i];

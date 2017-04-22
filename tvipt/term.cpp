@@ -187,6 +187,10 @@ void term_writeln(const char *val) {
     term_serial.write("\r\n");
 }
 
+void term_writeln() {
+    term_serial.write("\r\n");
+}
+
 void term_write_masked(const char *val) {
     while (*val++ != '\0') {
         term_serial.write("*");
@@ -200,6 +204,22 @@ void term_writeln_masked(const char *val) {
 
 void term_print(long val, int format) {
     term_serial.print(val, format);
+}
+
+void term_print(byte row, byte col, char *value) {
+    term_print(row, col, value, 0);
+}
+
+void term_print(byte row, byte col, char *value, size_t width) {
+    term_move(row, col);
+    if (width > 0) {
+        const char * start = value;
+        while (*value != '\0' && value - start < width) {
+            term_serial.write(*value++);
+        }
+    } else {
+        term_write(value);
+    }
 }
 
 void term_println(long val, int format) {

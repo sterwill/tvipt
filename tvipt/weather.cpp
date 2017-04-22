@@ -364,9 +364,9 @@ bool parse_mapclick_json(const char *mapclick_json, struct weather *weather) {
     }
 
     //////////////////////////////////////////////////////////////////
-    // future periods (14 of them, pulled from arrays in several objects)
+    // future periods (pulled from arrays in several objects)
 
-    for (int i = 0; i < 14; i++) {
+    for (int i = 0; i < FUTURE_PERIODS; i++) {
         struct period_forecast *period = &weather->future[i];
 
         jsmntok_t *name_tok = &tokens[time_period_name_i + 1 + i];
@@ -374,6 +374,9 @@ bool parse_mapclick_json(const char *mapclick_json, struct weather *weather) {
 
         jsmntok_t *weather_tok = &tokens[data_weather_i + 1 + i];
         scopy_json(period->weather, sizeof(period->weather), mapclick_json, weather_tok);
+
+        jsmntok_t *temperature_label_tok = &tokens[time_temp_label_i + 1 + i];
+        scopy_json(period->temperature_label, sizeof(period->temperature_label), mapclick_json, temperature_label_tok);
 
         jsmntok_t *temperature_tok = &tokens[data_temperature_i + 1 + i];
         scopy_json(period->temperature, sizeof(period->temperature), mapclick_json, temperature_tok);
@@ -411,7 +414,7 @@ const char *wind_direction(int angle) {
 }
 
 void print_weather(struct weather *weather) {
-    term_writeln("");
+    term_clear();
 
     term_write(weather->area);
     term_write(" (");
@@ -459,84 +462,24 @@ void print_weather(struct weather *weather) {
     // high temp cell needs to be blank, and we'll just print 13 of the
     // periods so each day's data remains in the same column.
     bool skip_first_day = strcmp(weather->future[0].name, "Tonight") == 0;
-    int periods_to_print = skip_first_day ? 13 : 14;
-    int second_name_start = skip_first_day ? 1 : 2;
     int first_day_index = skip_first_day ? 1 : 0;
     int first_night_index = skip_first_day ? 0 : 1;
 
-    // Day of week (empty left legend)
-    term_write("          Today     ");
-    for (int i = second_name_start; i < periods_to_print; i += 2) {
-        const char *str = weather->future[i].name;
-        // Copy without termination, leaving padding spaces
-        memset(col, ' ', sizeof(col));
-        memcpy(col, str, min(strlen(str), sizeof(col)));
-        term_write(col, sizeof(col));
-        term_write(" ");
+    for (int i = 0; i < 12; i++) {
+        int row = 10 + i;
+        struct period_forecast fc = weather->future[i];
+
+        term_print(row, 1, fc.name);
+        term_print(row, 18, fc.temperature_label);
+        term_print(row, 24, fc.temperature);
+        term_print(row, 28, fc.precipitation);
+        if (strlen(fc.precipitation) > 0) {
+            term_write("%");
+        }
+        term_print(row, 33, fc.weather, 80 - 33);
     }
+
     term_writeln("");
-
-    // High temps
-    term_write("high      ");
-    if (skip_first_day) {
-        term_write("          ");
-    }
-    for (int i = first_day_index; i < periods_to_print; i += 2) {
-        const char *str = weather->future[i].temperature;
-        // Copy without termination, leaving padding spaces
-        memset(col, ' ', sizeof(col));
-        memcpy(col, str, min(strlen(str), sizeof(col)));
-        term_write(col, sizeof(col));
-        term_write(" ");
-    }
-    term_writeln("");
-
-    // Low temps
-    term_write("low       ");
-    for (int i = first_night_index; i < periods_to_print; i += 2) {
-        const char *str = weather->future[i].temperature;
-        // Copy without termination, leaving padding spaces
-        memset(col, ' ', sizeof(col));
-        memcpy(col, str, min(strlen(str), sizeof(col)));
-        term_write(col, sizeof(col));
-        term_write(" ");
-    }
-    term_writeln("");
-
-    // Daytime precipitation
-    term_write("day pcp.  ");
-    if (skip_first_day) {
-        term_write("          ");
-    }
-    for (int i = first_day_index; i < periods_to_print; i += 2) {
-        const char *str = weather->future[i].precipitation;
-        // Copy without termination, leaving padding spaces
-        memset(col, ' ', sizeof(col));
-        memcpy(col, str, min(strlen(str), sizeof(col)));
-        term_write(col, sizeof(col));
-        term_write(" ");
-    }
-    term_writeln("");
-
-    // Nighttime precipitation
-    term_write("nite pcp. ");
-    for (int i = first_night_index; i < periods_to_print; i += 2) {
-        const char *str = weather->future[i].precipitation;
-        // Copy without termination, leaving padding spaces
-        memset(col, ' ', sizeof(col));
-        memcpy(col, str, min(strlen(str), sizeof(col)));
-        term_write(col, sizeof(col));
-        term_write(" ");
-    }
-    term_writeln("");
-
-    for (int i = 0; i < 5; i++) {
-        term_writeln("");
-        term_write(weather->future[i].name);
-        term_write(": ");
-        term_write(weather->future[i].weather);
-    }
-
     term_writeln("");
 }
 

@@ -42,11 +42,17 @@ void term_write(const char *val);
 
 void term_writeln(const char *val);
 
+void term_writeln();
+
 void term_write_masked(const char *val);
 
 void term_writeln_masked(const char *val);
 
 void term_print(long val, int format = DEC);
+
+void term_print(byte row, byte col, char *value);
+
+void term_print(byte row, byte col, char *value, size_t width);
 
 void term_println(long val, int format = DEC);
 

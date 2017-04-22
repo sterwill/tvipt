@@ -162,6 +162,10 @@ void term_init() {
     term_serial.write(TVIPT_CLEAR);
 }
 
+void term_clear() {
+    term_serial.write(TVIPT_CLEAR);
+}
+
 size_t term_write(const char c) {
     return term_serial.write(c);
 }

@@ -2,4 +2,4 @@
 
 BASE="$(realpath $(dirname ${0}))"
 
-"${BASE}"/build.sh && "${BASE}"/upload.sh
+"${BASE}"/build.sh && "${BASE}"/upload.sh $@

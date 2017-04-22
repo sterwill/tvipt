@@ -5,6 +5,7 @@
 #include "tcp.h"
 #include "telnets.h"
 #include "keyboard_test.h"
+#include "think.h"
 #include "weather.h"
 
 //////////////////////////////////////////////////////////////////////////////
@@ -56,6 +57,8 @@ command_status cmd_tcp_connect(char *tok);
 
 command_status cmd_telnets_connect(char *tok);
 
+command_status cmd_think(char *tok);
+
 command_status cmd_weather(char *tok);
 
 struct command {
@@ -78,6 +81,7 @@ struct command _commands[] = {
         {"scan",  "scan",          "scan for wireless networks",                 cmd_wifi_scan},
         {"tcp",   "tcp host port", "open TCP connection",                        cmd_tcp_connect},
         {"tel",   "tel host port", "open Telnet/SSL connection",                 cmd_telnets_connect},
+        {"think", "think",         "think a color",                              cmd_think},
         {"w",     "w",             "show the weather",                           cmd_weather},
 };
 
@@ -132,6 +136,7 @@ static const char *_e_missing_port = "missing port";
 static const char *_e_invalid_target = "invalid target";
 static const char *_e_invalid_charset = "invalid charset: ";
 static const char *_e_missing_zip = "missing zip";
+static const char *_e_missing_color = "missing color";
 
 //////////////////////////////////////////////////////////////////////////////
 // Chars
@@ -485,6 +490,32 @@ command_status cmd_wifi_scan(char *tok) {
         term_writeln(" networks");
         return CMD_OK;
     }
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// Think
+//////////////////////////////////////////////////////////////////////////////
+
+command_status cmd_think(char *tok) {
+    int n;
+    char color[20];
+
+    term_writeln("Here are some colors:");
+    term_writeln();
+    term_writeln(" red, pink, green, blue, cyan, white, purple, magenta, yellow, orange");
+    term_writeln();
+    term_write("Which color are you thinking of? ");
+
+    n = term_readln(color, sizeof(color) - 1, READLN_ECHO);
+    if (n == 0) {
+        term_writeln(_e_missing_color);
+        return CMD_ERR;
+    }
+    color[n] = '\0';
+    term_writeln("");
+
+    think(color);
+    return CMD_OK;
 }
 
 //////////////////////////////////////////////////////////////////////////////

@@ -78,13 +78,8 @@ boolean get_mapclick_url(const char *zip, char *mapclick_url, size_t mapclick_ur
     req.body_cb = NULL;
     req.caller_ctx = &ctx;
 
-    dbg_serial.println(req.host);
-    dbg_serial.println(req.path_and_query);
-
     memset(mapclick_url, '\0', mapclick_url_size);
     http_get(&req);
-
-    dbg_serial.println(req.status, DEC);
 
     if (req.status != 302) {
         term_write("HTTP error getting MapClick URL: ");
@@ -146,13 +141,8 @@ bool get_mapclick_json(const char *mapclick_url, char *mapclick_json, size_t map
     req.body_cb = get_mapclick_data_body_cb;
     req.caller_ctx = &ctx;
 
-    dbg_serial.println(req.host);
-    dbg_serial.println(req.path_and_query);
-
     memset(mapclick_json, '\0', mapclick_json_size);
     http_get(&req);
-
-    dbg_serial.println(req.status, DEC);
 
     if (req.status != 200) {
         term_write("HTTP error getting MapClick data: ");

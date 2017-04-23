@@ -30,6 +30,7 @@ struct http_request {
     void *caller_ctx;
 
     // HTTP methods fill these fields
+    int id;
     int status;
 
     // Valid during callback execution

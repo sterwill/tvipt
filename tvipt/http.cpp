@@ -2,6 +2,8 @@
 #include "http.h"
 #include "term.h"
 
+static int http_request_id = 0;
+
 // Reads one CRLF-terminated HTTP line from the client into a buffer
 // and terminates it.  Returns the number of bytes written to buf not 
 // including the terminator.
@@ -168,23 +170,61 @@ void http_request_init(struct http_request *req) {
     req->header_cb = NULL;
     req->body_cb = NULL;
 
+    req->id = http_request_id++;
     req->status = 0;
 
     req->client = NULL;
 }
 
-void http_get(struct http_request *req) {
-    bool connected;
+#define DBG() print_dbg_prefix(req);
+
+void print_dbg_prefix(struct http_request *req) {
+    dbg_serial.print("http #");
+    dbg_serial.print(req->id, DEC);
+    dbg_serial.print(": ");
+}
+
+void http_request_disconnect(struct http_request *req) {
+    if (req->client != NULL) {
+        req->client->stop();
+        delete req->client;
+        DBG();
+        dbg_serial.println("disconnected");
+    }
+    req->client = NULL;
+}
+
+bool http_request_connect(struct http_request *req) {
+    http_request_disconnect(req);
+
+    DBG();
+    dbg_serial.print("host: ");
+    dbg_serial.println(req->host);
+    DBG();
+    dbg_serial.print("uri: ");
+    dbg_serial.println(req->path_and_query);
+
     if (req->ssl) {
         req->client = new WiFiSSLClient();
-        connected = req->client->connectSSL(req->host, req->port);
+        DBG();
+        dbg_serial.println("connecting (https)");
+        return req->client->connectSSL(req->host, req->port);
     } else {
         req->client = new WiFiClient();
-        connected = req->client->connect(req->host, req->port);
+        DBG();
+        dbg_serial.println("connecting (http)");
+        return req->client->connect(req->host, req->port);
     }
+}
 
-    if (!connected) {
+void http_get(struct http_request *req) {
+    DBG();
+    dbg_serial.println("get");
+
+    if (!http_request_connect(req)) {
         req->status = HTTP_STATUS_CONNECT_ERR;
+        DBG();
+        dbg_serial.print("connect failed");
     } else {
         req->client->print("GET ");
         req->client->print(req->path_and_query);
@@ -208,7 +248,10 @@ void http_get(struct http_request *req) {
         // 12 chars is enough for "HTTP/1.1 200"
         if (read < 12 || (strncmp(line, "HTTP/1.0 ", 9) != 0 && strncmp(line, "HTTP/1.1 ", 9) != 0)) {
             req->status = HTTP_STATUS_MALFROMED_RESPONSE_LINE;
-            req->client->stop();
+            DBG();
+            dbg_serial.print("malformed response line: ");
+            dbg_serial.println(line);
+            http_request_disconnect(req);
             return;
         }
 
@@ -223,19 +266,31 @@ void http_get(struct http_request *req) {
                 char *value;
                 if (!parse_header(line, &header, &value)) {
                     req->status = HTTP_STATUS_MALFROMED_RESPONSE_HEADER;
-                    req->client->stop();
+                    DBG();
+                    dbg_serial.print("malformed response header: ");
+                    dbg_serial.println(line);
+                    http_request_disconnect(req);
                     return;
                 }
+                DBG();
+                dbg_serial.print("header: ");
+                dbg_serial.print(header);
+                dbg_serial.print(": ");
+                dbg_serial.println(value);
                 req->header_cb(req, header, value);
             }
         } while (read > 0);
 
         // Now read the body
         if (req->body_cb != NULL) {
+            DBG();
+            dbg_serial.println("invoking body cb");
             req->body_cb(req);
         }
     }
 
-    req->client->stop();
+    DBG();
+    dbg_serial.println("success");
+    http_request_disconnect(req);
 }
 

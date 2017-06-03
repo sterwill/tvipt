@@ -13,6 +13,7 @@
 
 static uint64_t _uptime;
 static unsigned long _last_millis = 0;
+static bool _handling_io = false;
 
 //////////////////////////////////////////////////////////////////////////////
 // Command Executor Return Values
@@ -570,7 +571,14 @@ void cli_loop() {
 
     // Don't consume keys if commands we're running are handling IO
     if (wifi_has_loop_callback()) {
+        _handling_io = true;
         return;
+    }
+
+    // If we just stopped handling IO, force a prompt
+    if (_handling_io) {
+        _handling_io = false;
+        print_prompt();
     }
 
     while (term_serial && term_serial.available()) {

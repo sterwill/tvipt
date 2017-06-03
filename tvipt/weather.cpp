@@ -23,7 +23,7 @@ struct get_mapclick_data_ctx {
 
 struct period_forecast {
     char name[24];
-    char weather[32];
+    char weather[42];
     char temperature_label[5];
     char temperature[4];
     char precipitation[4];
@@ -445,16 +445,6 @@ void print_weather(struct weather *weather) {
 
     term_writeln("");
 
-    // 9 printable chars each column, no terminator in this buffer
-    char col[9];
-
-    // If the weather starts at tonight, instead of today, today's
-    // high temp cell needs to be blank, and we'll just print 13 of the
-    // periods so each day's data remains in the same column.
-    bool skip_first_day = strcmp(weather->future[0].name, "Tonight") == 0;
-    int first_day_index = skip_first_day ? 1 : 0;
-    int first_night_index = skip_first_day ? 0 : 1;
-
     for (int i = 0; i < 12; i++) {
         int row = 10 + i;
         struct period_forecast fc = weather->future[i];
@@ -466,7 +456,7 @@ void print_weather(struct weather *weather) {
         if (strlen(fc.precipitation) > 0) {
             term_write("%");
         }
-        term_print(row, 33, fc.weather, 80 - 33);
+        term_print(row, 33, fc.weather, 80 - 43);
     }
 
     term_writeln("");

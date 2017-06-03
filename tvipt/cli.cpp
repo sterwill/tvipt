@@ -101,7 +101,7 @@ void print_prompt() {
 
 uint8_t parse_uint8(char *str, uint8_t *dest) {
     char *endptr = 0;
-    uint8_t value = strtol(str, &endptr, 10);
+    uint8_t value = (uint8_t) strtol(str, &endptr, 10);
     // The strtol man pages says this signifies success
     if (*str != 0 && *endptr == 0) {
         *dest = value;
@@ -112,7 +112,7 @@ uint8_t parse_uint8(char *str, uint8_t *dest) {
 
 uint16_t parse_uint16(char *str, uint16_t *dest) {
     char *endptr = 0;
-    uint16_t value = strtol(str, &endptr, 10);
+    uint16_t value = (uint16_t) strtol(str, &endptr, 10);
     // The strtol man pages says this signifies success
     if (*str != 0 && *endptr == 0) {
         *dest = value;
@@ -165,7 +165,7 @@ command_status cmd_chars(char *tok) {
                 while (term_serial.read() != TERM_XON) {}
             }
 
-            byte ch = c + (col * 12);
+            byte ch = (byte) (c + (col * 12));
 
             // On the last row, we'll have some columns to leave empty
             if (ch > LAST_PRINTABLE) {
@@ -227,7 +227,7 @@ command_status cmd_echo(char *tok) {
         if (c == TERM_BREAK) {
             return CMD_OK;
         } else if (c != -1) {
-            target->write(c);
+            target->write((uint8_t) c);
         }
     }
 }
@@ -240,7 +240,7 @@ command_status cmd_help(char *tok) {
     // Measure syntax column for padding
     uint8_t max_syntax_width = 0;
     for (int i = 0; i < (sizeof(_commands) / sizeof(struct command)); i++) {
-        max_syntax_width = max(max_syntax_width, strlen(_commands[i].syntax));
+        max_syntax_width = (uint8_t) max(max_syntax_width, strlen(_commands[i].syntax));
     }
 
     for (int i = 0; i < (sizeof(_commands) / sizeof(struct command)); i++) {
@@ -270,27 +270,27 @@ command_status cmd_help(char *tok) {
 #define DAY_MILLIS    (24 * HOUR_MILLIS)
 
 void print_time(uint64_t elapsed_ms) {
-    uint16_t days = elapsed_ms / DAY_MILLIS;
+    uint16_t days = (uint16_t) (elapsed_ms / DAY_MILLIS);
     term_print(days, DEC);
     term_write(" days, ");
     elapsed_ms -= days * DAY_MILLIS;
 
-    uint8_t hours = elapsed_ms / HOUR_MILLIS;
+    uint8_t hours = (uint8_t) (elapsed_ms / HOUR_MILLIS);
     term_print(hours, DEC);
     term_write(" hours, ");
     elapsed_ms -= hours * HOUR_MILLIS;
 
-    uint8_t minutes = elapsed_ms / MINUTE_MILLIS;
+    uint8_t minutes = (uint8_t) (elapsed_ms / MINUTE_MILLIS);
     term_print(minutes, DEC);
     term_write(" minutes, ");
     elapsed_ms -= minutes * MINUTE_MILLIS;
 
-    uint8_t seconds = elapsed_ms / SECOND_MILLIS;
+    uint8_t seconds = (uint8_t) (elapsed_ms / SECOND_MILLIS);
     term_print(seconds, DEC);
     term_write(" seconds, ");
     elapsed_ms -= seconds * SECOND_MILLIS;
 
-    term_print(elapsed_ms, DEC);
+    term_print((long) elapsed_ms, DEC);
     term_write(" milliseconds");
 }
 
@@ -388,7 +388,7 @@ command_status cmd_tcp_connect(char *tok) {
         term_writeln(_e_missing_port);
         return CMD_ERR;
     }
-    port = atoi(arg);
+    port = (uint16_t) atoi(arg);
 
     if (tcp_connect(host, port)) {
         return CMD_IO;
@@ -422,7 +422,7 @@ command_status cmd_telnets_connect(char *tok) {
         term_writeln(_e_missing_port);
         return CMD_ERR;
     }
-    port = atoi(arg);
+    port = (uint16_t) atoi(arg);
 
     if (telnets_connect(host, port, NULL)) {
         return CMD_IO;
@@ -550,6 +550,8 @@ command_status process_command() {
         case CMD_IO:
             // Print nothing, program is handling IO
             break;
+        default:
+            break;
     }
 
     return status;
@@ -582,7 +584,7 @@ void cli_loop() {
     }
 
     while (term_serial && term_serial.available()) {
-        char c = term_serial.read();
+        uint8_t c = (uint8_t) term_serial.read();
 
         // Handle backspace before normal character echo so we can do what's
         // required to make it look right and prevent it from erasing too far

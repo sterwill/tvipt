@@ -14,7 +14,8 @@
 static WiFiSSLClient _client;
 static byte _buf[BUFSIZE];
 
-size_t read_buf(Stream &stream, byte *buf, size_t max) {
+// Read up to max bytes from stream and store in buf
+size_t read(Stream &stream, byte *buf, size_t max, const char * stream_name) {
     size_t count = 0;
     while (count < max) {
         int c = stream.read();
@@ -22,9 +23,13 @@ size_t read_buf(Stream &stream, byte *buf, size_t max) {
             // No more bytes to read now
             break;
         }
-        *buf++ = c;
+        *buf++ = (byte) c;
         count++;
     }
+    dbg_serial.write("telnets: read ");
+    dbg_serial.print(count, DEC);
+    dbg_serial.write(" from ");
+    dbg_serial.println(stream_name);
     return count;
 }
 
@@ -33,7 +38,7 @@ void telnets_loop_cb() {
         size_t len;
 
         if (term_serial.available()) {
-            len = read_buf(term_serial, _buf, BUFSIZE);
+            len = read(term_serial, _buf, BUFSIZE, "term");
             if (len <= 0) {
                 _client.stop();
                 return;
@@ -42,7 +47,7 @@ void telnets_loop_cb() {
         }
 
         if (_client.available()) {
-            len = read_buf(_client, _buf, BUFSIZE);
+            len = read(_client, _buf, BUFSIZE, "net");
             if (len <= 0) {
                 _client.stop();
                 return;

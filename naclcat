@@ -1,0 +1,185 @@
+#!/usr/bin/env python3
+#
+# Requires PyNaCl.
+
+import binascii
+import io
+import sys
+from argparse import ArgumentParser
+
+import nacl.secret
+import nacl.utils
+
+# A serialized encrypted packet looks like:
+#
+#  Byte  Example  Description
+#  ---------------------------
+#  1     0x02     packet length high byte
+#  2     0x08     packet length low byte
+#
+#                 The first two bytes are a big-endian unsigned 16-bit integer that
+#                 specifies the number of packet bytes that follow.  In this example,
+#                 the value 0x0208 (decimal 520) means the packet will contain 24 nonce
+#                 bytes (contant for all packets) and 496 ciphertext bytes.
+#
+#                 Because each packet has a nonce and at the ciphertext always contains
+#                 a 16-byte nonce and 1 encrypted data byte, the minimum valid packet
+#                 length is 41 bytes.
+#
+#  3     0xAB     first nonce byte
+#  ...   ...
+#  26    0x7E     last nonce byte
+#
+#                 Bytes 3-26 contain the 24-byte Salsa20 nonce.
+#
+#  27    0x00     first ciphertext byte
+#  ...   ...
+#  496   0xFF     last ciphertext byte
+#
+#                 Bytes 27-496 (in this example) contain the Salsa20 ciphertext and MAC.
+
+PACKET_LEN_FIELD_SIZE = 2
+NONCE_FIELD_SIZE = nacl.secret.SecretBox.NONCE_SIZE
+MAC_OVERHEAD = 16
+
+MIN_PACKET_LEN = NONCE_FIELD_SIZE + MAC_OVERHEAD + 1
+MAX_PACKET_LEN = 65535
+
+verbose = False
+stdin = io.open('/dev/stdin', 'rb', buffering=0)
+stdout = io.open('/dev/stdout', 'wb', buffering=0)
+
+
+def hex_str(b, limit=8):
+    truncated = False
+    if limit is not None and len(b) > limit:
+        truncated = True
+        b = b[:limit]
+    s = '0x' + str(binascii.hexlify(b), 'ascii').upper()
+    if truncated:
+        s += '...'
+    return s
+
+
+def encrypt(box, max_packet_len=MAX_PACKET_LEN):
+    packet_num = 0
+
+    def log_e(msg):
+        if verbose:
+            sys.stderr.write('<e> [#%d] %s\n' % (packet_num, msg))
+
+    while True:
+        log_e('start')
+
+        # Account for the 24-byte nonce, 16-byte MAC.
+        plaintext = stdin.read(max_packet_len - NONCE_FIELD_SIZE - MAC_OVERHEAD)
+        if not plaintext:
+            break
+        log_e('read %d plaintext bytes' % len(plaintext))
+
+        nonce = nacl.utils.random(NONCE_FIELD_SIZE)
+        e_msg = box.encrypt(plaintext, nonce)
+        log_e('produced %d ciphertext bytes' % len(e_msg.ciphertext))
+
+        packet_len = len(e_msg.nonce) + len(e_msg.ciphertext)
+        packet_len_bytes = packet_len.to_bytes(PACKET_LEN_FIELD_SIZE, byteorder='big', signed=False)
+        log_e('packet_len = %d bytes' % packet_len)
+
+        stdout.write(packet_len_bytes)
+        log_e('wrote packet_len_bytes')
+
+        stdout.write(e_msg.nonce)
+        log_e('wrote nonce_bytes')
+
+        stdout.write(e_msg.ciphertext)
+        log_e('ciphertext')
+
+        stdout.flush()
+        log_e('done')
+
+        packet_num += 1
+
+    log_e('EOF')
+
+
+def decrypt(box):
+    packet_num = 0
+
+    def log_d(msg):
+        if verbose:
+            sys.stderr.write('<d> [#%d] %s\n' % (packet_num, msg))
+
+    while True:
+        log_d('start')
+
+        packet_len_bytes = stdin.read(PACKET_LEN_FIELD_SIZE)
+        if not packet_len_bytes:
+            break
+        log_d('read packet_len_bytes = %s' % hex_str(packet_len_bytes))
+        packet_len = int.from_bytes(packet_len_bytes, byteorder='big', signed=False)
+
+        nonce_bytes = stdin.read(NONCE_FIELD_SIZE)
+        if not nonce_bytes:
+            break
+        log_d('read nonce_bytes')
+
+        ciphertext = stdin.read(packet_len - NONCE_FIELD_SIZE)
+        if not ciphertext:
+            break
+        log_d('read ciphertext')
+
+        plaintext = box.decrypt(ciphertext, nonce=nonce_bytes)
+        log_d('decrypt ok')
+
+        stdout.write(plaintext)
+        stdout.flush()
+        log_d('done')
+
+        packet_num += 1
+
+    log_d('EOF')
+
+
+def main():
+    global verbose
+
+    parser = ArgumentParser(description='Encrypt or decrypt stdin/stdout with a secret key')
+
+    mode_group = parser.add_mutually_exclusive_group(required=True)
+    mode_group.add_argument('-e', '--encrypt', action='store_true',
+                            help='Read plaintext from stdin, write ciphertext to stdout')
+    mode_group.add_argument('-d', '--decrypt', action='store_false',
+                            help='Read ciphertext from stdin, write plaintext to stdout')
+
+    parser.add_argument('key', help='Salsa20 secret key (64 hexadecimal chars)')
+    parser.add_argument('-l', '--length', default=MAX_PACKET_LEN,
+                        help='Maximum encryption mode packet length')
+    parser.add_argument('-v', '--verbose', default=False, action='store_true',
+                        help='Write debugging output to stderr (output may compromise security)')
+
+    args = parser.parse_args()
+    verbose = args.verbose
+
+    hex_key = args.key
+    if len(hex_key) != 64:
+        print('Key must be 64 hexadecimal characters')
+        sys.exit(1)
+    key = bytes.fromhex(hex_key)
+
+    box = nacl.secret.SecretBox(key)
+
+    if args.encrypt:
+        max_packet_len = int(args.length)
+        if max_packet_len < MIN_PACKET_LEN or max_packet_len > MAX_PACKET_LEN:
+            print('Max packet length must be >= %d and <= %d' % (MIN_PACKET_LEN, MAX_PACKET_LEN))
+            sys.exit(2)
+
+        encrypt(box, max_packet_len=max_packet_len)
+    else:
+        decrypt(box)
+
+    sys.exit(0)
+
+
+if __name__ == '__main__':
+    main()

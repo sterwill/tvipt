@@ -452,10 +452,6 @@ command_status cmd_wifi_join(char *tok) {
 
     term_write("password: ");
     n = term_readln(pass, sizeof(pass) - 1, READLN_MASKED);
-    if (n == 0) {
-        term_writeln(_e_missing_password);
-        return CMD_ERR;
-    }
     pass[n] = '\0';
     term_writeln("");
 

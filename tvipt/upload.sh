@@ -17,6 +17,6 @@ fi
 
 stty -F "${DEV}" speed 1200 hupcl 1>/dev/null
 sleep 1.5
-"${HOME}/.arduino15/packages/arduino/tools/bossac/1.6.1-arduino/bossac" \
+"${HOME}/.arduino15/packages/arduino/tools/bossac/1.7.0/bossac" \
   -i --port="$(basename ${DEV})" -U true -i -e -w \
   "${BUILD_PATH}/tvipt.ino.bin" -R 

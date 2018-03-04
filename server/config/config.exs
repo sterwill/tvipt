@@ -29,6 +29,13 @@ use Mix.Config
 #
 #     import_config "#{Mix.env}.exs"
 
-config :logger, :console, format: "$time $metadata[$level] $levelpad$message\n", metadata: [:pid]
-config :tvipt, port: 3333
+config :logger,
+       :console,
+       format: "$time $metadata[$level] $levelpad$message\n",
+       metadata: [:pid]
+
+config :tvipt,
+       port: 3333,
+       shell_cmd: ["/bin/bash", "-l", "-i", "-c", "stty echo ; exec bash"]
+
 import_config "secret*.exs"

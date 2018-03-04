@@ -6,8 +6,8 @@ require Tvipt.ConnectionReader
 defmodule Tvipt.Connection do
   use GenServer
 
-  def start(client, secret_key) do
-    GenServer.start(__MODULE__, %{client: client, secret_key: secret_key})
+  def start(client, shell_cmd, secret_key) do
+    GenServer.start(__MODULE__, %{client: client, shell_cmd: shell_cmd, secret_key: secret_key})
   end
 
   def init(args) do
@@ -38,10 +38,8 @@ defmodule Tvipt.Connection do
     {:ok, reader_pid} = Tvipt.ConnectionReader.start_link(client, self(), state[:secret_key])
     Logger.info("reader at #{inspect(reader_pid)}")
 
-    shell_cmd = ["/bin/bash", "-l", "-i", "-c", "stty echo ; exec bash"]
-
     {:ok, exec_pid, os_pid} = Exexec.run(
-      shell_cmd,
+      state[:shell_cmd],
       stdin: true,
       stdout: true,
       stderr: true,

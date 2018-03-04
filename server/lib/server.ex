@@ -18,15 +18,15 @@ defmodule Tvipt.Server do
   def handle_cast({:serve}, state) do
     {:ok, socket} = :gen_tcp.listen(state[:port], [:binary, packet: :line, active: false, reuseaddr: true])
     Logger.info("listening on port #{state[:port]}")
-    accept(socket, state[:secret_key])
+    accept(socket, state)
     {:noreply, state}
   end
 
-  defp accept(socket, secret_key) do
+  defp accept(socket, state) do
     {:ok, client} = :gen_tcp.accept(socket)
-    {:ok, pid} = Tvipt.Connection.start(client, secret_key)
+    {:ok, pid} = Tvipt.Connection.start(client, state[:shell_cmd], state[:secret_key])
     :ok = :gen_tcp.controlling_process(client, pid)
     Tvipt.Connection.serve(pid)
-    accept(socket, secret_key)
+    accept(socket, state)
   end
 end

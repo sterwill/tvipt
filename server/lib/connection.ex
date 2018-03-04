@@ -15,7 +15,9 @@ defmodule Tvipt.Connection do
   end
 
   def stop(pid) do
-    GenServer.stop(pid)
+    # Crash the process for a quick exit, since its message queue may be large
+    # (queued output from the process ready to be written to a slow network connection).
+    Process.exit(pid, :stop)
   end
 
   def terminate(reason, state) do

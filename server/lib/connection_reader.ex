@@ -21,7 +21,6 @@ defmodule Tvipt.ConnectionReader do
   end
 
   def terminate(_reason, state) do
-    Logger.info("arf")
     Tvipt.Connection.stop(state[:conn_pid])
     :ignored
   end

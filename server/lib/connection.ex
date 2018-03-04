@@ -9,6 +9,10 @@ defmodule Tvipt.Connection do
     GenServer.start(__MODULE__, %{client: client})
   end
 
+  def init(args) do
+    {:ok, args}
+  end
+
   def serve(pid) do
     GenServer.cast(pid, :serve)
     :ok
@@ -20,8 +24,7 @@ defmodule Tvipt.Connection do
     Process.exit(pid, :stop)
   end
 
-  def terminate(reason, state) do
-    Logger.info("term")
+  def terminate(_reason, state) do
     Exexec.stop(state[:exec_pid])
     :ignored
   end
@@ -41,7 +44,7 @@ defmodule Tvipt.Connection do
       stdout: true,
       stderr: true,
       pty: true,
-      monitor: true,
+      monitor: true
     )
     Logger.info("exec at #{inspect(exec_pid)}, OS PID #{os_pid}")
 
@@ -72,7 +75,7 @@ defmodule Tvipt.Connection do
   end
 
   #  Handle the shell process stopping
-  def handle_info({:DOWN, _os_pid, :process, exec_pid, reason}, state) do
+  def handle_info({:DOWN, _os_pid, :process, exec_pid, _reason}, _state) do
     Logger.info("exec at #{inspect(exec_pid)} closed, stopping connection")
     {:stop, :shell_exit}
   end

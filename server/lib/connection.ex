@@ -1,12 +1,13 @@
 require Logger
 require Exexec
+require Kcl
 require Tvipt.ConnectionReader
 
 defmodule Tvipt.Connection do
   use GenServer
 
-  def start(client) do
-    GenServer.start(__MODULE__, %{client: client})
+  def start(client, secret_key) do
+    GenServer.start(__MODULE__, %{client: client, secret_key: secret_key})
   end
 
   def init(args) do
@@ -24,7 +25,8 @@ defmodule Tvipt.Connection do
     Process.exit(pid, :stop)
   end
 
-  def terminate(_reason, state) do
+  def terminate(reason, state) do
+    Logger.info("terminating: #{inspect(reason)}")
     Exexec.stop(state[:exec_pid])
     :ignored
   end
@@ -33,7 +35,7 @@ defmodule Tvipt.Connection do
     Logger.info("connection at #{inspect(self())}")
     client = state[:client]
 
-    {:ok, reader_pid} = Tvipt.ConnectionReader.start_link(client, self())
+    {:ok, reader_pid} = Tvipt.ConnectionReader.start_link(client, self(), state[:secret_key])
     Logger.info("reader at #{inspect(reader_pid)}")
 
     shell_cmd = ["/bin/bash", "-l", "-i", "-c", "stty echo ; exec bash"]
@@ -52,25 +54,32 @@ defmodule Tvipt.Connection do
             |> Map.put(:exec_pid, exec_pid)
             |> Map.put(:reader_pid, reader_pid)
 
-    Logger.info("shell operating system PID is #{os_pid}")
     {:noreply, state}
   end
 
   # Handle data read from the network connection
-  def handle_cast({:reader_data, data}, state) do
-    Exexec.send(state[:exec_pid], data)
+  def handle_cast({:read_client_msg, msg}, state) do
+    # Decode the message
+    <<_size :: binary - size(2), nonce :: binary - size(24), ciphertext :: binary>> = msg
+
+    # Decrypt the message
+    plaintext = Kcl.secretunbox(ciphertext, nonce, state[:secret_key])
+
+    # Send the plaintext to the shell
+    Exexec.send(state[:exec_pid], plaintext)
+
     {:noreply, state}
   end
 
   # Handle stdout read from the shell
   def handle_info({:stdout, _os_pid, data}, state) do
-    :gen_tcp.send(state[:client], data)
+    send_to_client(data, state)
     {:noreply, state}
   end
 
   # Handle stderr read from the shell
   def handle_info({:stderr, _os_pid, data}, state) do
-    :gen_tcp.send(state[:client], data)
+    send_to_client(data, state)
     {:noreply, state}
   end
 
@@ -78,5 +87,11 @@ defmodule Tvipt.Connection do
   def handle_info({:DOWN, _os_pid, :process, exec_pid, _reason}, _state) do
     Logger.info("exec at #{inspect(exec_pid)} closed, stopping connection")
     {:stop, :shell_exit}
+  end
+
+  defp send_to_client(data, state) do
+    nonce = :crypto.strong_rand_bytes(24)
+    box = Kcl.secretbox(data, nonce, state[:secret_key])
+    :gen_tcp.send(state[:client], box)
   end
 end

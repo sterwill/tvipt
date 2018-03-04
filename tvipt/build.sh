@@ -24,9 +24,10 @@ arduino-builder -compile \
   -build-path "${BUILD_PATH}" \
   -warnings=none \
   -prefs=build.warn_data_percentage=75  \
-  -prefs="runtime.tools.openocd.path=${HOME}/.arduino15/packages/arduino/tools/openocd/0.9.0-arduino6-static"  \
-  -prefs="runtime.tools.bossac.path=${HOME}/.arduino15/packages/arduino/tools/bossac/1.7.0" \
-  -prefs="runtime.tools.CMSIS.path=${HOME}/.arduino15/packages/arduino/tools/CMSIS/4.5.0" \
-  -prefs="runtime.tools.arm-none-eabi-gcc.path=${HOME}/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/4.8.3-2014q1" \
   $@ \
-  "${BASE}/tvipt.ino" 
+  "${BASE}/tvipt.ino"
+
+#  -prefs="runtime.tools.openocd.path=${HOME}/.arduino15/packages/arduino/tools/openocd/0.9.0-arduino"  \
+#  -prefs="runtime.tools.bossac.path=${HOME}/.arduino15/packages/arduino/tools/bossac/1.6.1-arduino" \
+#  -prefs="runtime.tools.CMSIS.path=${HOME}/.arduino15/packages/arduino/tools/CMSIS/4.0.0-atmel" \
+#  -prefs="runtime.tools.arm-none-eabi-gcc.path=${HOME}/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/4.8.3-2014q1" \

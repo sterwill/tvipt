@@ -21,8 +21,8 @@ set(CMAKE_CXX_COMPILER ${ARDUINO_PKG_DIR}/arduino/tools/arm-none-eabi-gcc/4.8.3-
 
 # Add the SAMD core, variant, and all libraries
 include_directories(
-        ${ARDUINO_PKG_DIR}/adafruit/hardware/samd/1.0.17/cores/arduino
-        ${ARDUINO_PKG_DIR}/adafruit/hardware/samd/1.0.17/variants/arduino_zero
+        ${ARDUINO_PKG_DIR}/adafruit/hardware/samd/1.0.22/cores/arduino
+        ${ARDUINO_PKG_DIR}/adafruit/hardware/samd/1.0.22/variants/arduino_zero
         ${ARDUINO_PKG_DIR}/arduino/tools/CMSIS/4.0.0-atmel
         ${ARDUINO_LIB_DIR}/WiFi101/src
 )

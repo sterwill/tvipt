@@ -11,6 +11,7 @@ BUILD_PATH="${BASE}/build"
 mkdir -p "${BUILD_PATH}"
 
 arduino-builder -compile \
+  -verbose \
   -hardware "${ARDUINO_HOME}/hardware" \
   -hardware "${HOME}/.arduino15/packages" \
   -tools "${ARDUINO_HOME}/tools-builder" \

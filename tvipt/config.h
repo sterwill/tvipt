@@ -7,10 +7,13 @@
 #define DEFAULT_WIFI_PASSWORD       NULL
 #define DEFAULT_WIFI_JOIN_TIMEOUT   5000
 
-// The telnets host connected to automatically at boot.
+// The host to connect to using the tvipt protocol automatically at boot.
 
-#define DEFAULT_TELNETS_HOST        NULL
-#define DEFAULT_TELNETS_PORT        992
-#define DEFAULT_TELNETS_USERNAME    NULL
+#define DEFAULT_HOST                NULL
+#define DEFAULT_PORT                3333
+
+// The Chacha20 secret key for tvipt protocol (change this to a random 32-byte sequence).
+
+#define SECRET_KEY                  { 0x11, 0x00, 0x11, 0x00, 0x11, 0x00, 0x11, 0x00, 0x11, 0x00, 0x11, 0x00, 0x11, 0x00, 0x11, 0x00, 0x11, 0x00, 0x11, 0x00, 0x11, 0x00, 0x11, 0x00, 0x11, 0x00, 0x11, 0x00, 0x11, 0x00, 0x11, 0x00, 0x11, 0x00, 0x11, 0x00, 0x11, 0x00, 0x11, 0x00 }
 
 #endif

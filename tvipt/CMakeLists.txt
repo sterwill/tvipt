@@ -25,6 +25,7 @@ include_directories(
         ${ARDUINO_PKG_DIR}/adafruit/hardware/samd/1.0.22/variants/arduino_zero
         ${ARDUINO_PKG_DIR}/arduino/tools/CMSIS/4.0.0-atmel
         ${ARDUINO_LIB_DIR}/WiFi101/src
+        ${ARDUINO_LIB_DIR}/CifraChaCha20Poly1305/src
 )
 
 # Consider all source-ish files to be source code

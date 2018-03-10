@@ -18,7 +18,7 @@ void setup() {
     term_writeln("");
 
     cli_boot(DEFAULT_WIFI_SSID, DEFAULT_WIFI_PASSWORD, DEFAULT_WIFI_JOIN_TIMEOUT,
-             DEFAULT_TELNETS_HOST, DEFAULT_TELNETS_PORT, DEFAULT_TELNETS_USERNAME);
+             DEFAULT_HOST, DEFAULT_PORT);
 }
 
 void loop() {

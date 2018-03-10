@@ -25,9 +25,9 @@ void wifi_connect(const char *ssid, const char *pass) {
     scopy(_ssid, ssid, sizeof(_ssid));
     scopy(_pass, pass, sizeof(_pass));
     if (0 && strlen(_pass) == 0) {
-      WiFi.begin(_ssid);
+        WiFi.begin(_ssid);
     } else {
-      WiFi.begin(_ssid, _pass);
+        WiFi.begin(_ssid, _pass);
     }
 }
 

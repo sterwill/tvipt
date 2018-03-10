@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include "tvipt_proto.h"
 #include "cli.h"
 #include "wifi.h"
 #include "term.h"
@@ -37,6 +38,8 @@ enum command_status {
 // Commands
 //////////////////////////////////////////////////////////////////////////////
 
+command_status cmd_connect(char *tok);
+
 command_status cmd_chars(char *tok);
 
 command_status cmd_echo(char *tok);
@@ -69,6 +72,7 @@ struct command {
 
 // Help is printed in this order
 struct command _commands[] = {
+        {"c",     "c host port",   "connect to tvipt server at host",            cmd_connect},
         {"chars", "chars [alt]",   "print the (alternate) printable characters", cmd_chars},
         {"echo",  "echo [dbg]",    "echo chars typed to terminal (or debugger)", cmd_echo},
         {"h",     "h",             "print this help",                            cmd_help},
@@ -126,13 +130,46 @@ uint16_t parse_uint16(char *str, uint16_t *dest) {
 //////////////////////////////////////////////////////////////////////////////
 
 static const char *_e_missing_ssid = "missing ssid";
-static const char *_e_missing_password = "missing password";
 static const char *_e_invalid_command = "invalid command: ";
 static const char *_e_missing_host = "missing host";
 static const char *_e_missing_port = "missing port";
 static const char *_e_invalid_target = "invalid target";
 static const char *_e_invalid_charset = "invalid charset: ";
 static const char *_e_missing_zip = "missing zip";
+
+//////////////////////////////////////////////////////////////////////////////
+// Connect to a tvipt Server
+//////////////////////////////////////////////////////////////////////////////
+
+command_status cmd_connect(char *tok) {
+    char *arg;
+    const char *host;
+    uint16_t port;
+    const char *key;
+
+    // Parse host
+    arg = strtok_r(NULL, " ", &tok);
+    if (arg == NULL) {
+        term_writeln(_e_missing_host);
+        return CMD_ERR;
+    }
+    host = arg;
+
+    // Parse port
+    arg = strtok_r(NULL, " ", &tok);
+    if (arg == NULL) {
+        term_writeln(_e_missing_port);
+        return CMD_ERR;
+    }
+    port = (uint16_t) atoi(arg);
+
+    if (tvipt_proto_connect(host, port)) {
+        return CMD_IO;
+    } else {
+        term_writeln("connection failed");
+        return CMD_ERR;
+    }
+}
 
 //////////////////////////////////////////////////////////////////////////////
 // Chars
@@ -631,9 +668,8 @@ void cli_loop() {
 void cli_boot(const char *default_wifi_ssid,
               const char *default_wifi_pass,
               uint16_t wifi_join_timeout,
-              const char *default_telnets_host,
-              uint16_t default_telnets_port,
-              const char *default_telnets_user) {
+              const char *default_host,
+              uint16_t default_port) {
 
     boolean connected = false;
     if (default_wifi_ssid != NULL && default_wifi_pass != NULL) {
@@ -649,14 +685,14 @@ void cli_boot(const char *default_wifi_ssid,
             delay(1);
         }
 
-        if (default_telnets_host != NULL && default_telnets_port > 0) {
-            term_write("telnets: auto connect host=");
-            term_write(default_telnets_host);
+        if (default_host != NULL && default_port > 0) {
+            term_write("tvipt proto: auto connect host=");
+            term_write(default_host);
             term_write(" port=");
-            term_print(default_telnets_port, DEC);
+            term_print(default_port, DEC);
             term_writeln("");
 
-            connected = telnets_connect(default_telnets_host, default_telnets_port, default_telnets_user);
+            connected = tvipt_proto_connect(default_host, default_port);
         }
     }
 

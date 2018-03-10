@@ -1,7 +1,8 @@
 require Logger
 require Exexec
-require Kcl
 require Tvipt.ConnectionReader
+require Chacha20
+require Poly1305
 
 defmodule Tvipt.Connection do
   use GenServer
@@ -57,16 +58,17 @@ defmodule Tvipt.Connection do
 
   # Handle data read from the network connection
   def handle_cast({:read_client_msg, msg}, state) do
-    # Decode the message
-    <<_size :: binary - size(2), nonce :: binary - size(24), ciphertext :: binary>> = msg
-
-    # Decrypt the message
-    plaintext = Kcl.secretunbox(ciphertext, nonce, state[:secret_key])
-
-    # Send the plaintext to the shell
-    Exexec.send(state[:exec_pid], plaintext)
-
-    {:noreply, state}
+    <<_size :: binary - size(2), nonce :: binary - size(12), mac :: binary - size(16), ciphertext :: binary>> = msg
+    case Poly1305.aead_decrypt(ciphertext, state[:secret_key], nonce, mac) do
+      :error ->
+        Logger.info("decrypt error")
+        {:stop, :decrypt_error}
+      plaintext ->
+        # Send the plaintext to the shell
+        Logger.info("got plaintext #{plaintext}")
+        Exexec.send(state[:exec_pid], plaintext)
+        {:noreply, state}
+    end
   end
 
   # Handle stdout read from the shell
@@ -88,8 +90,9 @@ defmodule Tvipt.Connection do
   end
 
   defp send_to_client(data, state) do
-    nonce = :crypto.strong_rand_bytes(24)
-    box = Kcl.secretbox(data, nonce, state[:secret_key])
-    :gen_tcp.send(state[:client], box)
+    nonce = :crypto.strong_rand_bytes(12)
+    {ciphertext, mac} = Poly1305.aead_encrypt(data, state[:secret_key], nonce)
+    msg_size = byte_size(nonce) + byte_size(mac) + byte_size(ciphertext)
+    :gen_tcp.send(state[:client], <<msg_size :: integer - size(16)>> <> nonce <> mac <> ciphertext)
   end
 end

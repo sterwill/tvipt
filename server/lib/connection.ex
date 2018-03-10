@@ -58,7 +58,7 @@ defmodule Tvipt.Connection do
 
   # Handle data read from the network connection
   def handle_cast({:read_client_msg, msg}, state) do
-    <<_size :: binary - size(2), nonce :: binary - size(12), mac :: binary - size(16), ciphertext :: binary>> = msg
+    <<_size :: binary - size(1), nonce :: binary - size(12), mac :: binary - size(16), ciphertext :: binary>> = msg
     case Poly1305.aead_decrypt(ciphertext, state[:secret_key], nonce, mac) do
       :error ->
         Logger.info("decrypt error")
@@ -72,13 +72,13 @@ defmodule Tvipt.Connection do
   end
 
   # Handle stdout read from the shell
-  def handle_info({:stdout, _os_pid, data}, state) do
+  def handle_info({:stdout, _os_pid, data}, state)  do
     send_to_client(data, state)
     {:noreply, state}
   end
 
   # Handle stderr read from the shell
-  def handle_info({:stderr, _os_pid, data}, state) do
+  def handle_info({:stderr, _os_pid, data}, state)  do
     send_to_client(data, state)
     {:noreply, state}
   end
@@ -89,10 +89,19 @@ defmodule Tvipt.Connection do
     {:stop, :shell_exit}
   end
 
+  defp send_to_client(<<>>, _state) do
+    :ok
+  end
+
   defp send_to_client(data, state) do
+    # Send up to 256 bytes in this message, then recurse to send remaining.
+    {msg_data, remaining_data} = String.split_at(data, 256)
+
     nonce = :crypto.strong_rand_bytes(12)
-    {ciphertext, mac} = Poly1305.aead_encrypt(data, state[:secret_key], nonce)
+    {ciphertext, mac} = Poly1305.aead_encrypt(msg_data, state[:secret_key], nonce)
     msg_size = byte_size(nonce) + byte_size(mac) + byte_size(ciphertext)
     :gen_tcp.send(state[:client], <<msg_size :: integer - size(16)>> <> nonce <> mac <> ciphertext)
+
+    send_to_client(remaining_data, state)
   end
 end

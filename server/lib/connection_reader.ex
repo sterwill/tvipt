@@ -56,10 +56,10 @@ defmodule Tvipt.ConnectionReader do
   defp handle_recv(data, state) do
     msg_buf = state[:msg_buf] <> data
 
-    msg_buf = case byte_size(msg_buf) >= 2 do
+    msg_buf = case byte_size(msg_buf) > 0 do
       true ->
-        <<msg_size :: integer - size(16), _ :: binary>> = msg_buf
-        msg_total_size = msg_size + 2
+        <<msg_size :: integer - size(8), _ :: binary>> = msg_buf
+        msg_total_size = msg_size + 1
 
         case byte_size(msg_buf) >= msg_total_size do
           true ->

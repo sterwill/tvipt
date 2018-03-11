@@ -18,7 +18,7 @@
 #define BREAK_CHAR                  '\0'
 
 // Uncomment to print encryption information to dbg_serial
-//#define DEBUG_CRYPT
+#define DEBUG_CRYPT
 
 static WiFiClient _client;
 
@@ -86,6 +86,10 @@ bool send_available() {
     _client.write(ciphertext, plaintext_size);
     _client.flush();
 
+#ifdef DEBUG_CRYPT
+    hexdump(dbg_serial, "send done", nonce, sizeof(nonce));
+#endif
+
     return true;
 }
 
@@ -134,7 +138,7 @@ bool receive_available() {
             }
 
 #ifdef DEBUG_CRYPT
-            hexdump(dbg_serial, "plaintext", plaintext, ciphertext_len);
+            hexdump(dbg_serial, "recv plaintext", plaintext, ciphertext_len);
 #endif
             // Write to the terminal
             term_write(plaintext, ciphertext_len);

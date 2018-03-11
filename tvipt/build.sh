@@ -10,6 +10,8 @@ BUILD_PATH="${BASE}/build"
 
 mkdir -p "${BUILD_PATH}"
 
+rm -rf "${BUILD_PATH}/sketch"
+
 arduino-builder -compile \
   -verbose \
   -hardware "${ARDUINO_HOME}/hardware" \

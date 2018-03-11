@@ -10,10 +10,6 @@ void cli_init();
 
 void cli_loop();
 
-void cli_boot(const char *default_wifi_ssid,
-              const char *default_wifi_pass,
-              uint16_t wifi_join_timeout,
-              const char *default_host,
-              uint16_t default_port);
+boolean cli_boot();
 
 #endif

@@ -213,7 +213,7 @@ void term_print(byte row, byte col, char *value) {
 void term_print(byte row, byte col, char *value, size_t width) {
     term_move(row, col);
     if (width > 0) {
-        const char * start = value;
+        const char *start = value;
         while (*value != '\0' && value - start < width) {
             term_serial.write(*value++);
         }

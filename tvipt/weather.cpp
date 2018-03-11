@@ -72,6 +72,8 @@ boolean get_mapclick_url(const char *zip, char *mapclick_url, size_t mapclick_ur
 
     struct http_request req;
     http_request_init(&req);
+    req.ssl = true;
+    req.port = 443;
     req.host = "forecast.weather.gov";
     req.path_and_query = path_and_query;
     req.header_cb = get_mapclick_url_header_cb;
@@ -132,6 +134,8 @@ bool get_mapclick_json(const char *mapclick_url, char *mapclick_json, size_t map
 
     struct http_request req;
     http_request_init(&req);
+    req.ssl = true;
+    req.port = 443;
     req.host = parts.host;
     if (parts.port != 0) {
         req.port = parts.port;

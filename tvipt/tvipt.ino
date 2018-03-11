@@ -17,8 +17,7 @@ void setup() {
     term_writeln("tvipt/1 (TeleVideo Personal Terminal) Operating System");
     term_writeln("");
 
-    cli_boot(DEFAULT_WIFI_SSID, DEFAULT_WIFI_PASSWORD, DEFAULT_WIFI_JOIN_TIMEOUT,
-             DEFAULT_HOST, DEFAULT_PORT);
+    cli_boot();
 }
 
 void loop() {

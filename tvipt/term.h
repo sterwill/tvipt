@@ -17,7 +17,12 @@
 #define TERM_DISABLE_ALT_CHAR   'K'
 #define TERM_MOVE_TO_POS        '=' // r c
 
+// Serial is the USB connection's virtual serial port (use the Arduino serial monitor
+// or another communications program on the host to see debug output as tvipt commands
+// run).
 #define dbg_serial    Serial
+
+// Serial1 is where the terminal's RX/TX lines are connected
 #define term_serial   Serial1
 
 enum readln_echo {

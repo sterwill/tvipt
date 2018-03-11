@@ -6,10 +6,7 @@ defmodule Tvipt.App do
 
   def start(_type, _args) do
     port = Application.fetch_env!(:tvipt, :port)
-
-    secret_key_hex = Application.fetch_env!(:tvipt, :secret_key)
-    secret_key = elem(Base.decode16(secret_key_hex), 1)
-
+    secret_key = Application.fetch_env!(:tvipt, :secret_key)
     shell_cmd = Application.fetch_env!(:tvipt, :shell_cmd)
 
     children = [

@@ -55,18 +55,29 @@ defmodule Tvipt.ConnectionReader do
 
   defp handle_recv(data, state) do
     msg_buf = state[:msg_buf] <> data
+    Logger.debug("buf: #{inspect(msg_buf, base: :hex)}")
 
-    msg_buf = case byte_size(msg_buf) > 0 do
+    msg_buf = case byte_size(msg_buf) > 12 + 16 + 1 do
       true ->
-        <<msg_size :: integer - size(8), _ :: binary>> = msg_buf
-        msg_total_size = msg_size + 1
+        # Buffer contains the nonce, tag, and ciphertext length of one message
+        <<
+          nonce :: (binary - size(12)),
+          tag :: (binary - size(16)),
+          ciphertext_len :: (integer - size(8)),
+          ciphertext_and_next_msg :: binary
+        >> = msg_buf
 
-        case byte_size(msg_buf) >= msg_total_size do
+        case byte_size(msg_buf) >= 12 + 16 + 1 + ciphertext_len do
           true ->
-            # Got a full message
-            <<msg :: (binary - size (msg_total_size)), msg_buf_remainder :: binary>> = msg_buf
-            GenServer.cast(state[:conn_pid], {:read_client_msg, msg})
-            msg_buf_remainder
+            # Buffer contains the complete message including all ciphertext, and possibly
+            # bytes for the next message
+            <<
+              ciphertext :: (binary - size(ciphertext_len)),
+              next_msg_buf :: binary
+            >> = ciphertext_and_next_msg
+
+            GenServer.cast(state[:conn_pid], {:read_client_msg, nonce, tag, ciphertext})
+            next_msg_buf
           _ ->
             # Not enough bytes for the declared size
             msg_buf

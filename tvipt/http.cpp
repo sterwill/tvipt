@@ -208,12 +208,12 @@ bool http_request_connect(struct http_request *req) {
         req->client = new WiFiSSLClient();
         DBG();
         dbg_serial.println("connecting (https)");
-        return req->client->connectSSL(req->host, req->port);
+        return req->client->connectSSL(req->host, req->port) == 1;
     } else {
         req->client = new WiFiClient();
         DBG();
         dbg_serial.println("connecting (http)");
-        return req->client->connect(req->host, req->port);
+        return req->client->connect(req->host, req->port) == 1;
     }
 }
 
@@ -224,7 +224,7 @@ void http_get(struct http_request *req) {
     if (!http_request_connect(req)) {
         req->status = HTTP_STATUS_CONNECT_ERR;
         DBG();
-        dbg_serial.print("connect failed");
+        dbg_serial.println("connect failed");
     } else {
         req->client->print("GET ");
         req->client->print(req->path_and_query);
@@ -287,10 +287,11 @@ void http_get(struct http_request *req) {
             dbg_serial.println("invoking body cb");
             req->body_cb(req);
         }
+
+        DBG();
+        dbg_serial.println("success");
     }
 
-    DBG();
-    dbg_serial.println("success");
     http_request_disconnect(req);
 }
 

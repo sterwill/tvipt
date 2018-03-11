@@ -32,10 +32,11 @@ use Mix.Config
 config :logger,
        :console,
        format: "$time $metadata[$level] $levelpad$message\n",
-       metadata: [:pid]
+       metadata: [:pid],
+       level: :info
 
 config :tvipt,
        port: 3333,
-       shell_cmd: ["/bin/bash", "-l", "-i", "-c", "stty echo ; exec bash"]
+       shell_cmd: ["/bin/bash", "-l", "-i", "-c", "TERM=tvipt ; stty echo ; exec bash"]
 
 import_config "secret*.exs"

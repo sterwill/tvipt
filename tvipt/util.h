@@ -72,7 +72,18 @@ inline int find_json_prop(const char *json, jsmntok_t *tokens, int num_tokens, i
     (((m) & 0x00000000000000FF) << 56) )
 #endif
 
-#define _ntohll      		    _htonll
+#define _ntohll                _htonll
+
+// Write hex bytes with a string prefix
+inline void hexdump(Stream &out, const char *prefix, const void *mem, const size_t size) {
+    out.write(prefix);
+    out.write(": ");
+    for (size_t i = 0; i < size; i++) {
+        out.print((uint8_t) *((const uint8_t *) (mem + i)), HEX);
+        out.write(" ");
+    }
+    out.write("\n");
+}
 
 #endif
 

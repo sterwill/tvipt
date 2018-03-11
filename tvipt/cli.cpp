@@ -4,9 +4,9 @@
 #include "wifi.h"
 #include "term.h"
 #include "tcp.h"
-#include "telnets.h"
 #include "keyboard_test.h"
 #include "weather.h"
+#include "config.h"
 
 //////////////////////////////////////////////////////////////////////////////
 // Internal Data
@@ -38,6 +38,8 @@ enum command_status {
 // Commands
 //////////////////////////////////////////////////////////////////////////////
 
+command_status cmd_boot(char *tok);
+
 command_status cmd_connect(char *tok);
 
 command_status cmd_chars(char *tok);
@@ -58,8 +60,6 @@ command_status cmd_wifi_scan(char *tok);
 
 command_status cmd_tcp_connect(char *tok);
 
-command_status cmd_telnets_connect(char *tok);
-
 command_status cmd_weather(char *tok);
 
 struct command {
@@ -72,6 +72,7 @@ struct command {
 
 // Help is printed in this order
 struct command _commands[] = {
+        {"b",     "b",             "re-run boot commands without resetting",     cmd_boot},
         {"c",     "c host port",   "connect to tvipt server at host",            cmd_connect},
         {"chars", "chars [alt]",   "print the (alternate) printable characters", cmd_chars},
         {"echo",  "echo [dbg]",    "echo chars typed to terminal (or debugger)", cmd_echo},
@@ -82,7 +83,6 @@ struct command _commands[] = {
         {"reset", "reset",         "uptime goes to 0",                           cmd_reset},
         {"scan",  "scan",          "scan for wireless networks",                 cmd_wifi_scan},
         {"tcp",   "tcp host port", "open TCP connection",                        cmd_tcp_connect},
-        {"tel",   "tel host port", "open Telnet/SSL connection",                 cmd_telnets_connect},
         {"w",     "w",             "show the weather",                           cmd_weather},
 };
 
@@ -136,6 +136,14 @@ static const char *_e_missing_port = "missing port";
 static const char *_e_invalid_target = "invalid target";
 static const char *_e_invalid_charset = "invalid charset: ";
 static const char *_e_missing_zip = "missing zip";
+
+//////////////////////////////////////////////////////////////////////////////
+// Run boot commands
+//////////////////////////////////////////////////////////////////////////////
+
+command_status cmd_boot(char *tok) {
+    return cli_boot() ? CMD_IO : CMD_OK;
+}
 
 //////////////////////////////////////////////////////////////////////////////
 // Connect to a tvipt Server
@@ -435,40 +443,6 @@ command_status cmd_tcp_connect(char *tok) {
     }
 }
 
-
-//////////////////////////////////////////////////////////////////////////////
-// Telnet over SSL
-//////////////////////////////////////////////////////////////////////////////
-
-command_status cmd_telnets_connect(char *tok) {
-    char *arg;
-    const char *host;
-    uint16_t port;
-
-    // Parse host
-    arg = strtok_r(NULL, " ", &tok);
-    if (arg == NULL) {
-        term_writeln(_e_missing_host);
-        return CMD_ERR;
-    }
-    host = arg;
-
-    // Parse port
-    arg = strtok_r(NULL, " ", &tok);
-    if (arg == NULL) {
-        term_writeln(_e_missing_port);
-        return CMD_ERR;
-    }
-    port = (uint16_t) atoi(arg);
-
-    if (telnets_connect(host, port, NULL)) {
-        return CMD_IO;
-    } else {
-        term_writeln("connection failed");
-        return CMD_ERR;
-    }
-}
-
 //////////////////////////////////////////////////////////////////////////////
 // Wifi Join
 //////////////////////////////////////////////////////////////////////////////
@@ -665,38 +639,38 @@ void cli_loop() {
     }
 }
 
-void cli_boot(const char *default_wifi_ssid,
-              const char *default_wifi_pass,
-              uint16_t wifi_join_timeout,
-              const char *default_host,
-              uint16_t default_port) {
+// Returns true if an IO-capturing thing is running, false if not
+boolean cli_boot() {
 
     boolean connected = false;
-    if (default_wifi_ssid != NULL && default_wifi_pass != NULL) {
+    if (DEFAULT_WIFI_SSID != NULL && DEFAULT_WIFI_PASSWORD != NULL) {
         term_write("wifi: auto join ssid=[");
-        term_write(default_wifi_ssid);
+        term_write(DEFAULT_WIFI_SSID);
         term_write("] timeout=");
-        term_print(wifi_join_timeout, DEC);
+        term_print(DEFAULT_WIFI_JOIN_TIMEOUT, DEC);
         term_writeln("ms");
 
-        wifi_connect(default_wifi_ssid, default_wifi_pass);
-        unsigned long timeout = millis() + wifi_join_timeout;
+        wifi_connect(DEFAULT_WIFI_SSID, DEFAULT_WIFI_PASSWORD);
+        unsigned long timeout = millis() + DEFAULT_WIFI_JOIN_TIMEOUT;
         while (!wifi_is_connected() && millis() < timeout) {
             delay(1);
         }
 
-        if (default_host != NULL && default_port > 0) {
+        if (DEFAULT_HOST != NULL && DEFAULT_PORT > 0) {
             term_write("tvipt proto: auto connect host=");
-            term_write(default_host);
+            term_write(DEFAULT_HOST);
             term_write(" port=");
-            term_print(default_port, DEC);
+            term_print(DEFAULT_PORT, DEC);
             term_writeln("");
 
-            connected = tvipt_proto_connect(default_host, default_port);
+            connected = tvipt_proto_connect(DEFAULT_HOST, DEFAULT_PORT);
         }
     }
 
     if (!connected) {
         print_prompt();
+        return false;
+    } else {
+        return true;
     }
 }

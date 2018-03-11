@@ -57,15 +57,17 @@ defmodule Tvipt.Connection do
   end
 
   # Handle data read from the network connection
-  def handle_cast({:read_client_msg, msg}, state) do
-    <<_size :: binary - size(1), nonce :: binary - size(12), mac :: binary - size(16), ciphertext :: binary>> = msg
-    case Poly1305.aead_decrypt(ciphertext, state[:secret_key], nonce, mac) do
+  def handle_cast({:read_client_msg, nonce, tag, ciphertext}, state) do
+    Logger.debug("recv nonce: #{inspect(nonce, base: :hex)}")
+    Logger.debug("recv tag: #{inspect(tag, base: :hex)}")
+    Logger.debug("recv ciphertext: #{inspect(ciphertext, base: :hex)}")
+
+    case Poly1305.aead_decrypt(ciphertext, state[:secret_key], nonce, tag) do
       :error ->
         Logger.info("decrypt error")
         {:stop, :decrypt_error}
       plaintext ->
         # Send the plaintext to the shell
-        Logger.info("got plaintext #{plaintext}")
         Exexec.send(state[:exec_pid], plaintext)
         {:noreply, state}
     end
@@ -93,15 +95,19 @@ defmodule Tvipt.Connection do
     :ok
   end
 
-  defp send_to_client(data, state) do
-    # Send up to 256 bytes in this message, then recurse to send remaining.
-    {msg_data, remaining_data} = String.split_at(data, 256)
+  defp send_to_client(data, state) when byte_size(data) > 255 do
+    send_to_client(binary_part(data, 0, 255), state)
+    send_to_client(binary_part(data, 255, byte_size(data) - 255), state)
+  end
 
+  defp send_to_client(data, state) when byte_size(data) <= 255 do
     nonce = :crypto.strong_rand_bytes(12)
-    {ciphertext, mac} = Poly1305.aead_encrypt(msg_data, state[:secret_key], nonce)
-    msg_size = byte_size(nonce) + byte_size(mac) + byte_size(ciphertext)
-    :gen_tcp.send(state[:client], <<msg_size :: integer - size(16)>> <> nonce <> mac <> ciphertext)
-
-    send_to_client(remaining_data, state)
+    {ciphertext, tag} = Poly1305.aead_encrypt(data, state[:secret_key], nonce)
+    Logger.debug("send nonce: #{inspect(nonce, base: :hex)}")
+    Logger.debug("send tag: #{inspect(tag, base: :hex)}")
+    Logger.debug("send ciphertext len: #{inspect(byte_size(ciphertext), base: :hex)}")
+    Logger.debug("send ciphertext: #{inspect(ciphertext, base: :hex)}")
+    :gen_tcp.send(state[:client], nonce <> tag <> <<byte_size(ciphertext) :: integer - size(8)>> <> ciphertext)
+    :ok
   end
 end

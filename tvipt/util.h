@@ -57,4 +57,22 @@ inline int find_json_prop(const char *json, jsmntok_t *tokens, int num_tokens, i
     return -1;
 }
 
+
+#ifdef _NM_BSP_BIG_END
+#define _htonll(m)				(m)
+#else
+#define _htonll(m)              (uint64_t) ( \
+    (((m) & 0xFF00000000000000) >> 56) | \
+    (((m) & 0x00FF000000000000) >> 40) | \
+    (((m) & 0x0000FF0000000000) >> 24) | \
+    (((m) & 0x000000FF00000000) >>  8) | \
+    (((m) & 0x00000000FF000000) <<  8) | \
+    (((m) & 0x0000000000FF0000) << 24) | \
+    (((m) & 0x000000000000FF00) << 40) | \
+    (((m) & 0x00000000000000FF) << 56) )
 #endif
+
+#define _ntohll      		    _htonll
+
+#endif
+

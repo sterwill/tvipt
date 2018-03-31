@@ -114,8 +114,8 @@ bool receive_available() {
 
         // Check if we have a complete message in the buffer (index points past nonce + tag + ciphertext len
         // and index is at the last byte of the ciphertext data).
-        if (msg_idx >= (msg_buf + MSG_NONCE_SIZE + MSG_TAG_SIZE + MSG_CIPHERTEXT_LEN_SIZE) &&
-            msg_idx == msg_buf + MSG_CIPHERTEXT_OFFSET + msg_buf[MSG_CIPHERTEXT_LEN_OFFSET]) {
+        if (msg_idx >= (msg_buf + MSG_NONCE_SIZE + MSG_TAG_SIZE + MSG_CIPHERTEXT_LEN_SIZE)
+            && msg_idx == msg_buf + MSG_CIPHERTEXT_OFFSET + msg_buf[MSG_CIPHERTEXT_LEN_OFFSET]) {
             // Decode the message in the buffer
             const uint8_t *nonce = msg_buf + MSG_NONCE_OFFSET;
             const uint8_t *tag = msg_buf + MSG_TAG_OFFSET;

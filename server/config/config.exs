@@ -38,6 +38,6 @@ config :logger,
 config :tvipt,
   port: 3333,
   program: "/usr/bin/socat",
-  program_args: ["exec:'/bin/sh -l -i -c \"TERM=tvipt ; stty echo ; exec /bin/zsh\"',stderr,ctty,setsid,pty", "STDIO"]
+  program_args: ["exec:'/bin/sh -l -i -c \"TERM=tvipt ; stty echo ; exec /bin/zsh\"',stderr,ctty,setsid,pty,sane", "STDIO"]
 
 import_config "secret*.exs"

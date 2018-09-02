@@ -50,7 +50,7 @@ defmodule Tvipt.ConnectionReader do
       {:error, :closed} ->
         # Stop this process
         Logger.info("connection closed")
-        {:stop, :normal, state}
+        {:stop, :connection_closed, state}
     end
   end
 

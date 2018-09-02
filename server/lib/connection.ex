@@ -50,7 +50,7 @@ defmodule Tvipt.Connection do
 
     # Link the process to this one so the shell gets stopped if the connection drops
     # for any reason
-    Process.link(porcelain_proc.pid)
+    true = Process.link(porcelain_proc.pid)
 
     Logger.info("started porcelain #{inspect(porcelain_proc.pid)}")
 

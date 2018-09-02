@@ -36,7 +36,8 @@ config :logger,
        level: :info
 
 config :tvipt,
-       port: 3333,
-       shell_cmd: ["/bin/bash", "-l", "-i", "-c", "TERM=tvipt ; stty echo ; exec bash"]
+  port: 3333,
+  program: "/usr/bin/socat",
+  program_args: ["exec:'/bin/sh -l -i -c \"TERM=tvipt ; stty echo ; exec /bin/zsh\"',stderr,ctty,setsid,pty", "STDIO"]
 
 import_config "secret*.exs"

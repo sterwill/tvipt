@@ -6,7 +6,7 @@ defmodule Server.Mixfile do
       app: :tvipt,
       version: "0.1.0",
       elixir: "~> 1.5",
-      start_permanent: Mix.env == :prod,
+      start_permanent: Mix.env() == :prod,
       deps: deps()
     ]
   end
@@ -14,7 +14,7 @@ defmodule Server.Mixfile do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger, :erlexec, :exexec],
+      extra_applications: [:logger, :porcelain],
       mod: {Tvipt.App, []}
     ]
   end
@@ -22,7 +22,7 @@ defmodule Server.Mixfile do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:exexec, "~> 0.1"},
+      {:porcelain, "~> 2.0"},
       {:chacha20, "~> 1.0"},
       {:poly1305, "~> 1.0"}
       # {:dep_from_hexpm, "~> 0.3.0"},

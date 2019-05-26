@@ -22,6 +22,20 @@ defmodule Tvipt.Connection do
     GenServer.stop(pid, reason)
   end
 
+  def receive_from_client(pid, nonce, tag, ciphertext) do
+    GenServer.cast(pid, {:receive_from_client, nonce, tag, ciphertext})
+  end
+
+  def send_to_client(pid, data) when byte_size(data) > 255 do
+    send_to_client(pid, binary_part(data, 0, 255))
+    send_to_client(pid, binary_part(data, 255, byte_size(data) - 255))
+  end
+
+  def send_to_client(pid, data) when byte_size(data) <= 255 do
+    GenServer.cast(pid, {:send_to_client, data})
+    :ok
+  end
+
   # Server
 
   @impl true
@@ -59,7 +73,7 @@ defmodule Tvipt.Connection do
 
   # Handle data read from the network connection
   @impl true
-  def handle_cast({:read_client_msg, nonce, tag, ciphertext}, state) do
+  def handle_cast({:receive_from_client, nonce, tag, ciphertext}, state) do
     Logger.debug("recv nonce: #{inspect(nonce, base: :hex)}")
     Logger.debug("recv tag: #{inspect(tag, base: :hex)}")
     Logger.debug("recv ciphertext: #{inspect(ciphertext, base: :hex)}")
@@ -76,30 +90,10 @@ defmodule Tvipt.Connection do
     end
   end
 
-  # Handle stdout read from the shell
+  # Send data to the network connection
+
   @impl true
-  def handle_info({_porcelain_pid, :data, :out, data}, state) do
-    send_to_client(data, state)
-    {:noreply, state}
-  end
-
-  # Handle the shell process result
-  @impl true
-  def handle_info({porcelain_pid, :result, result}, state) do
-    Logger.info("porcelain #{inspect(porcelain_pid)} finished with status #{result.status}")
-    {:stop, :normal, state}
-  end
-
-  defp send_to_client(<<>>, _state) do
-    :ok
-  end
-
-  defp send_to_client(data, state) when byte_size(data) > 255 do
-    send_to_client(binary_part(data, 0, 255), state)
-    send_to_client(binary_part(data, 255, byte_size(data) - 255), state)
-  end
-
-  defp send_to_client(data, state) when byte_size(data) <= 255 do
+  def handle_cast({:send_to_client, data}, state) when byte_size(data) <= 255 do
     nonce = :crypto.strong_rand_bytes(12)
     {ciphertext, tag} = Poly1305.aead_encrypt(data, state.secret_key, nonce)
     Logger.debug("send nonce: #{inspect(nonce, base: :hex)}")
@@ -112,6 +106,20 @@ defmodule Tvipt.Connection do
       nonce <> tag <> <<byte_size(ciphertext) :: integer - size(8)>> <> ciphertext
     )
 
-    :ok
+    {:noreply, state}
+  end
+
+  # Handle stdout read from the shell
+  @impl true
+  def handle_info({_porcelain_pid, :data, :out, data}, state) do
+    send_to_client(self(), data)
+    {:noreply, state}
+  end
+
+  # Handle the shell process result
+  @impl true
+  def handle_info({porcelain_pid, :result, result}, state) do
+    Logger.info("porcelain #{inspect(porcelain_pid)} finished with status #{result.status}")
+    {:stop, :normal, state}
   end
 end

@@ -78,7 +78,7 @@ defmodule Tvipt.ConnectionReader do
                 next_msg_buf :: binary
               >> = ciphertext_and_next_msg
 
-              GenServer.cast(state.conn_pid, {:read_client_msg, nonce, tag, ciphertext})
+              Tvipt.Connection.receive_from_client(state.conn_pid, nonce, tag, ciphertext)
               next_msg_buf
 
             _ ->

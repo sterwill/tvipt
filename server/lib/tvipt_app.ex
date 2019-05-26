@@ -14,14 +14,14 @@ defmodule Tvipt.App do
         id: Tvipt.Server,
         start:
           {Tvipt.Server, :start_link,
-           [
-             [
-               port: port,
-               program: program,
-               program_args: program_args,
-               secret_key: secret_key
-             ]
-           ]}
+          [
+            [
+              port: port,
+              program: program,
+              program_args: program_args,
+              secret_key: secret_key
+            ]
+          ]}
       }
     ]
 

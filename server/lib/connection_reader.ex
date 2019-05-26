@@ -63,10 +63,10 @@ defmodule Tvipt.ConnectionReader do
         true ->
           # Buffer contains the nonce, tag, and ciphertext length of one message
           <<
-            nonce::binary-size(12),
-            tag::binary-size(16),
-            ciphertext_len::integer-size(8),
-            ciphertext_and_next_msg::binary
+            nonce :: binary - size(12),
+            tag :: binary - size(16),
+            ciphertext_len :: integer - size(8),
+            ciphertext_and_next_msg :: binary
           >> = msg_buf
 
           case byte_size(msg_buf) >= 12 + 16 + 1 + ciphertext_len do
@@ -74,8 +74,8 @@ defmodule Tvipt.ConnectionReader do
               # Buffer contains the complete message including all ciphertext, and possibly
               # bytes for the next message
               <<
-                ciphertext::binary-size(ciphertext_len),
-                next_msg_buf::binary
+                ciphertext :: binary - size(ciphertext_len),
+                next_msg_buf :: binary
               >> = ciphertext_and_next_msg
 
               GenServer.cast(state.conn_pid, {:read_client_msg, nonce, tag, ciphertext})

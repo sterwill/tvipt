@@ -109,7 +109,7 @@ defmodule Tvipt.Connection do
 
     :gen_tcp.send(
       state.client,
-      nonce <> tag <> <<byte_size(ciphertext)::integer-size(8)>> <> ciphertext
+      nonce <> tag <> <<byte_size(ciphertext) :: integer - size(8)>> <> ciphertext
     )
 
     :ok

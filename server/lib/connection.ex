@@ -4,6 +4,7 @@ defmodule Tvipt.Connection do
   require Logger
 
   defmodule State do
+    @derive {Inspect, except: [:secret_key]}
     defstruct [:client, :program, :program_args, :secret_key, :reader_pid, :porcelain_proc]
   end
 
@@ -16,10 +17,6 @@ defmodule Tvipt.Connection do
   def serve(pid) do
     GenServer.cast(pid, :serve)
     :ok
-  end
-
-  def stop(pid, reason) do
-    GenServer.stop(pid, reason)
   end
 
   def receive_from_client(pid, nonce, tag, ciphertext) do
@@ -48,7 +45,7 @@ defmodule Tvipt.Connection do
   def handle_cast(:serve, state) do
     client = state.client
 
-    reader_args = [client: client, conn_pid: self(), secret_key: state.secret_key]
+    reader_args = [client: client, conn_pid: self()]
     {:ok, reader_pid} = Tvipt.ConnectionReader.start_link(reader_args)
     Logger.info("started reader #{inspect(reader_pid)}")
 
@@ -91,7 +88,6 @@ defmodule Tvipt.Connection do
   end
 
   # Send data to the network connection
-
   @impl true
   def handle_cast({:send_to_client, data}, state) when byte_size(data) <= 255 do
     nonce = :crypto.strong_rand_bytes(12)

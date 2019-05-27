@@ -4,17 +4,13 @@ defmodule Tvipt.ConnectionReader do
   require Logger
 
   defmodule State do
-    defstruct [:client, :conn_pid, :secret_key, msg_buf: <<>>]
+    defstruct [:client, :conn_pid, msg_buf: <<>>]
   end
 
   # Client
 
   def start_link(args) do
     GenServer.start_link(__MODULE__, args)
-  end
-
-  def stop(pid, reason) do
-    GenServer.stop(pid, reason)
   end
 
   # Server
@@ -37,7 +33,7 @@ defmodule Tvipt.ConnectionReader do
 
   @impl true
   def handle_cast({:read}, state) do
-    # Do a blocking recv for a short time so we can handle external stop messages after the read
+    # Do a blocking recv for a short time so GenServer can handle external stop messages occasionally
     case :gen_tcp.recv(state.client, 0, 100) do
       {:ok, data} ->
         {:noreply, handle_recv(data, state)}
@@ -50,7 +46,7 @@ defmodule Tvipt.ConnectionReader do
       {:error, :closed} ->
         # Stop this process
         Logger.info("connection closed")
-        {:stop, :connection_closed, state}
+        {:stop, :normal, state}
     end
   end
 

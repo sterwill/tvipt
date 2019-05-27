@@ -4,6 +4,7 @@ defmodule Tvipt.Server do
   require Logger
 
   defmodule State do
+    @derive {Inspect, except: [:secret_key]}
     defstruct [:port, :program, :program_args, :secret_key]
   end
 

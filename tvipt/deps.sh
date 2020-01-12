@@ -7,7 +7,7 @@
 git clone git@github.com:sterwill/CifraChaCha20Poly1305.git ~/Arduino/libraries/CifraChaCha20Poly1305
 
 arduino --pref "boardsmanager.additional.urls=https://adafruit.github.io/arduino-board-index/package_adafruit_index.json" --save-prefs
-arduino --install-library WiFi101:0.15.3
-arduino --install-boards arduino:samd:1.6.21
-arduino --install-boards adafruit:samd:1.4.1
+arduino --install-library WiFi101:0.16.0
+arduino --install-boards arduino:samd:1.8.4
+arduino --install-boards adafruit:samd:1.5.7
 

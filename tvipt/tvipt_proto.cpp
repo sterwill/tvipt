@@ -18,7 +18,7 @@
 #define BREAK_CHAR                  '\0'
 
 // Uncomment to print encryption information to dbg_serial
-#define DEBUG_CRYPT
+//#define DEBUG_CRYPT
 
 static WiFiClient _client;
 

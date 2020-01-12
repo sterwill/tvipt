@@ -22,8 +22,8 @@
 // run).
 #define dbg_serial    Serial
 
-// Serial1 is where the terminal's RX/TX lines are connected
-#define term_serial   Serial1
+// This is the flow-controlled Uart we use to communicate with the terminal.
+extern Uart term_serial;
 
 enum readln_echo {
     READLN_ECHO,
@@ -66,4 +66,3 @@ int term_readln(char *buf, int max, readln_echo echo);
 void term_move(byte row, byte col);
 
 #endif
-

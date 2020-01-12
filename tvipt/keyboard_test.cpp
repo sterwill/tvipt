@@ -25,4 +25,3 @@ bool keyboard_test() {
     term_writeln("keyboard test finished");
     return true;
 }
-

@@ -1,6 +1,7 @@
 #include "Print.h"
 
 #include "term.h"
+#include "wiring_private.h"
 
 /*
  * The TeleVideo Personal Terminal (PT) is a typical RS-232 serial terminal 
@@ -150,16 +151,45 @@
 #define TVIPT_INIT "\x0D\x1B\x33\x0D\x20\x20\x20\x20\x20\x20\x20\x20\x1B\x31\x20\x20\x20\x20\x20\x20\x20\x20\x1B\x31\x20\x20\x20\x20\x20\x20\x20\x20\x1B\x31\x20\x20\x20\x20\x20\x20\x20\x20\x1B\x31\x20\x20\x20\x20\x20\x20\x20\x20\x1B\x31\x20\x20\x20\x20\x20\x20\x20\x20\x1B\x31\x20\x20\x20\x20\x20\x20\x20\x20\x1B\x31\x20\x20\x20\x20\x20\x20\x20\x20\x1B\x31\x20\x20\x20\x20\x20\x20\x20\x20\x1B\x31\x0D"
 #define TVIPT_CLEAR "\x1a"
 
-void term_init() {
-    dbg_serial.begin(115200);
+// The Feather M0's Serial1 uses SERCOM0, which maps RX and TX pads to board pins, but 
+// its CTS or RTS pads aren't easy to use (one's pin is shared by Wifi, the other isn't 
+// exposed).  In order to be able to use hardware flow control, we build a Uart that 
+// uses SERCOM1, whose default mappings expose all 4 pads as adjacent board pins:
+// 
+//   Pin    Arduino 'Pin'   SERCOM      Function
+//   -------------------------------------------
+//   PA18   D10             SERCOM1.2   RTS
+//   PA16   D11             SERCOM1.0   TX
+//   PA19   D12             SERCOM1.3   CTS
+//   PA17   D13             SERCOM1.1   RX
+// 
+// See https://learn.adafruit.com/using-atsamd21-sercom-to-add-more-spi-i2c-serial-ports/muxing-it-up
+//
+// The UART_TX_RTS_CTS_PAD_0_2_3 TX pad configuration forces us to receive on
+// on PAD1 because it's the only one left.
+Uart term_serial(&sercom1, 13, 11, SERCOM_RX_PAD_1, UART_TX_RTS_CTS_PAD_0_2_3, 10, 12);
+
+void SERCOM1_Handler() {
+  term_serial.IrqHandler();
+}
+
+void term_init() {       
     term_serial.end();
     term_serial.begin(19200);
-
+    pinPeripheral(10, PIO_SERCOM);
+    pinPeripheral(11, PIO_SERCOM);
+    pinPeripheral(12, PIO_SERCOM);
+    pinPeripheral(13, PIO_SERCOM);
+       
     while (!term_serial) {}
+
+    term_serial.flush();
 
     term_serial.setTimeout(-1);
     term_serial.write(TVIPT_INIT);
     term_serial.write(TVIPT_CLEAR);
+
+    dbg_serial.begin(115200);   
 }
 
 void term_clear() {

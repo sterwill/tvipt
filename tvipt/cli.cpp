@@ -206,7 +206,7 @@ command_status cmd_chars(char *tok) {
     byte c = FIRST_PRINTABLE;
     while (c <= FIRST_PRINTABLE + 11) {
         for (int col = 0; col < 8; col++) {
-            if (term_serial.read() == TERM_XOFF) {
+            if (term_read() == TERM_XOFF) {
                 while (term_serial.read() != TERM_XON) {}
             }
 
@@ -250,13 +250,13 @@ command_status cmd_chars(char *tok) {
 
 command_status cmd_echo(char *tok) {
     char *arg;
-    Print *target = &term_serial;
+    bool dbg_target;
 
     // Parse target
     arg = strtok_r(NULL, " ", &tok);
     if (arg != NULL) {
         if (strcmp("dbg", arg) == 0) {
-            target = &dbg_serial;
+            dbg_target = true;
         } else {
             term_write(_e_invalid_target);
             term_writeln(arg);
@@ -268,11 +268,15 @@ command_status cmd_echo(char *tok) {
 
     while (true) {
         // Handle break and flow control
-        int c = term_serial.read();
+        int c = term_read();
         if (c == TERM_BREAK) {
             return CMD_OK;
         } else if (c != -1) {
-            target->write((uint8_t) c);
+            if (dbg_target) {
+                dbg_serial->write((uint8_t) c);
+            } else {
+                term_write(c);
+            }
         }
     }
 }
@@ -360,15 +364,15 @@ command_status cmd_info(char *tok) {
     term_writeln_masked(w_info.pass);
 
     term_write("wifi address: ");
-    w_info.address.printTo(term_serial);
+    term_print(w_info.address);
     term_writeln("");
 
     term_write("wifi netmask: ");
-    w_info.netmask.printTo(term_serial);
+    term_print(w_info.netmask);
     term_writeln("");
 
     term_write("wifi gateway: ");
-    w_info.gateway.printTo(term_serial);
+    term_print(w_info.gateway);
     term_writeln("");
 
     term_write("wifi time: ");
@@ -400,9 +404,9 @@ command_status cmd_keyboard_test(char *tok) {
 
 command_status cmd_reset(char *tok) {
     term_writeln("starting over!");
-    term_serial.flush();
-    while (term_serial.available()) {
-        term_serial.read();
+    term_flush();
+    while (term_available()) {
+        term_read();
     }
     NVIC_SystemReset();
 
@@ -548,11 +552,11 @@ command_status process_command() {
     switch (status) {
         case CMD_OK:
             term_writeln("= ok");
-            term_serial.flush();
+            term_flush();
             break;
         case CMD_ERR:
             term_writeln("= err");
-            term_serial.flush();
+            term_flush();
             break;
         case CMD_IO:
             // Print nothing, program is handling IO
@@ -590,8 +594,8 @@ void cli_loop() {
         print_prompt();
     }
 
-    while (term_serial && term_serial.available()) {
-        uint8_t c = (uint8_t) term_serial.read();
+    while (term_available()) {
+        uint8_t c = (uint8_t) term_read();
 
         // Handle backspace before normal character echo so we can do what's
         // required to make it look right and prevent it from erasing too far
@@ -600,11 +604,11 @@ void cli_loop() {
             if (_command_index > 0) {
                 if (ECHO) {
                     // Go back one char
-                    term_serial.write(0x08);
+                    term_write(0x08);
                     // Overwrite char with a space
-                    term_serial.write(" ");
+                    term_write(" ");
                     // Go back again
-                    term_serial.write(0x08);
+                    term_write(0x08);
                 }
                 // Shrink the command buffer
                 _command[_command_index] = 0;
@@ -614,7 +618,7 @@ void cli_loop() {
         }
 
         if (ECHO) {
-            term_serial.write(c);
+            term_write(c);
         }
 
         if (c != '\r' && c != '\n' && _command_index < sizeof(_command)) {

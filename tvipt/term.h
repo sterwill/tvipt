@@ -5,6 +5,8 @@
 
 #include <Print.h>
 #include <Arduino.h>
+#include <SPI.h>
+#include <WiFi101.h> 
 
 #define TERM_BREAK    0
 // https://en.wikipedia.org/wiki/Software_flow_control
@@ -22,9 +24,6 @@
 // run).
 #define dbg_serial    Serial
 
-// This is the flow-controlled Uart we use to communicate with the terminal.
-extern Uart term_serial;
-
 enum readln_echo {
     READLN_ECHO,
     READLN_NO_ECHO,
@@ -35,31 +34,37 @@ void term_init();
 
 void term_loop();
 
+bool term_available();
+
 void term_clear();
 
-size_t term_write(const char c);
+void term_write(const char c);
 
-size_t term_write(const uint8_t *buf, size_t size);
+void term_write(const uint8_t *buf, size_t size);
 
-size_t term_write(const char *buf, size_t size);
+void term_write(const char *buf, size_t size);
 
 void term_write(const char *val);
 
-void term_writeln(const char *val);
-
 void term_writeln();
+
+void term_writeln(const char *val);
 
 void term_write_masked(const char *val);
 
 void term_writeln_masked(const char *val);
 
-void term_print(long val, int format = DEC);
+void term_write(byte row, byte col, char *value, size_t width);
 
-void term_print(byte row, byte col, char *value);
+void term_write(byte row, byte col, char *value);
 
-void term_print(byte row, byte col, char *value, size_t width);
+void term_print(long val, int base = DEC);
 
-void term_println(long val, int format = DEC);
+void term_println(long val, int base = DEC);
+
+void term_print(const IPAddress & addr);
+
+char term_read();
 
 int term_readln(char *buf, int max, readln_echo echo);
 

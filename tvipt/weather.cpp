@@ -453,14 +453,14 @@ void print_weather(struct weather *weather) {
         int row = 10 + i;
         struct period_forecast fc = weather->future[i];
 
-        term_print(row, 1, fc.name);
-        term_print(row, 18, fc.temperature_label);
-        term_print(row, 24, fc.temperature);
-        term_print(row, 28, fc.precipitation);
+        term_write(row, 1, fc.name);
+        term_write(row, 18, fc.temperature_label);
+        term_write(row, 24, fc.temperature);
+        term_write(row, 28, fc.precipitation);
         if (strlen(fc.precipitation) > 0) {
             term_write("%");
         }
-        term_print(row, 33, fc.weather, 80 - 43);
+        term_write(row, 33, fc.weather, 80 - 43);
     }
 
     term_writeln("");
@@ -491,4 +491,3 @@ void weather(const char *zip) {
 
     print_weather(&weather);
 }
-

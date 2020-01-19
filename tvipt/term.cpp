@@ -169,11 +169,35 @@
 // on PAD1 because it's the only one left.
 Uart term_serial(&sercom1, 13, 11, SERCOM_RX_PAD_1, UART_TX_RTS_CTS_PAD_0_2_3, 10, 12);
 
+// Transmission buffer.
+uint8_t tx_buf[1024];
+uint8_t * tx_buf_i;
+
+// XON/XOFF flow control state.
+bool tx_enabled;
+
+void _write_buf(const uint8_t* buf, const size_t size) {
+    while (tx_buf_i < tx_buf + sizeof(tx_buf) && buf < buf + size) {
+        *tx_buf_i++ = *buf++;
+    }
+    if (tx_buf_i >= tx_buf_i + sizeof(tx_buf)) {
+        dbg_serial.write("tx buffer full!");
+    }
+}
+
+void _write_buf(const char* buf, const size_t size) {
+    _write_buf((const uint8_t *) buf, size);
+}
+
 void SERCOM1_Handler() {
   term_serial.IrqHandler();
 }
 
-void term_init() {       
+void term_init() {
+    memset(tx_buf, 0, sizeof(tx_buf));
+    tx_buf_i = tx_buf;
+    tx_enabled = true;
+    
     term_serial.end();
     term_serial.begin(19200);
     pinPeripheral(10, PIO_SERCOM);
@@ -184,77 +208,110 @@ void term_init() {
     while (!term_serial) {}
 
     term_serial.flush();
-
     term_serial.setTimeout(-1);
-    term_serial.write(TVIPT_INIT);
-    term_serial.write(TVIPT_CLEAR);
+    _write_buf(TVIPT_INIT, strlen(TVIPT_INIT));
+    term_clear();
 
     dbg_serial.begin(115200);   
 }
 
+bool term_available() {
+    return term_serial && term_serial.available();
+}
+
 void term_clear() {
-    term_serial.write(TVIPT_CLEAR);
+    _write_buf(TVIPT_CLEAR, strlen(TVIPT_CLEAR));
 }
 
-size_t term_write(const char c) {
-    return term_serial.write(c);
+void term_write(const char c) {
+    _write_buf(&c, 1);
 }
 
-size_t term_write(const uint8_t *buf, size_t size) {
-    return term_serial.write(buf, size);
+void term_write(const uint8_t *buf, size_t size) {
+    _write_buf(buf, size);
 }
 
-size_t term_write(const char *buf, size_t size) {
-    return term_serial.write(buf, size);
+void term_write(const char *buf, size_t size) {
+    _write_buf(buf, size);
 }
 
 void term_write(const char *val) {
-    term_serial.write(val);
-}
-
-void term_writeln(const char *val) {
-    term_serial.write(val);
-    term_serial.write("\r\n");
+    _write_buf(val, strlen(val));
 }
 
 void term_writeln() {
-    term_serial.write("\r\n");
+    _write_buf("\r\n", 2);
+}
+
+void term_writeln(const char *val) {
+    _write_buf(val, strlen(val));
+    term_writeln();
 }
 
 void term_write_masked(const char *val) {
     while (*val++ != '\0') {
-        term_serial.write("*");
+        _write_buf("*", 1);
     }
 }
 
 void term_writeln_masked(const char *val) {
     term_write_masked(val);
-    term_serial.write("\r\n");
+    term_writeln();
 }
 
-void term_print(long val, int format) {
-    term_serial.print(val, format);
-}
-
-void term_print(byte row, byte col, char *value) {
-    term_print(row, col, value, 0);
-}
-
-void term_print(byte row, byte col, char *value, size_t width) {
+void term_write(byte row, byte col, char *value, size_t width) {
     term_move(row, col);
     if (width > 0) {
         const char *start = value;
         while (*value != '\0' && value - start < width) {
-            term_serial.write(*value++);
+            _write_buf(value, 1);
+            value++;
         }
     } else {
-        term_write(value);
+        _write_buf(value, strlen(value));
     }
 }
 
-void term_println(long val, int format) {
-    term_serial.print(val, format);
-    term_serial.write("\r\n");
+void term_write(byte row, byte col, char *value) {
+    term_write(row, col, value, 0);
+}
+
+void term_print(long val, int base) {
+    const char * fmt;
+    if (base == DEC) {
+        fmt = "%ld";
+    } else if (base == HEX) {
+        fmt = "%lX";
+    } else if (base == OCT) {
+        fmt = "%lo";
+    } else {
+        return;
+    }
+
+    // Format into buffer leaving a char for the terminator in all cases
+    char buf[32];
+    size_t n = snprintf(buf, sizeof(buf) - 1, fmt, val);
+    buf[n] = 0;
+    _write_buf(buf, n);
+}
+
+void term_println(long val, int base) {
+    term_print(val, base);
+    term_write("\r\n");
+}
+
+void term_print(const IPAddress & addr) {
+    for (int i = 0; i < 4; i++) {
+        if (i > 0) {
+            term_print('.');
+        }
+        term_print(addr[i], DEC);
+    }
+}
+
+
+char term_read() {
+    return term_serial.read();
 }
 
 int term_readln(char *buf, int max, readln_echo echo) {
@@ -276,7 +333,6 @@ int term_readln(char *buf, int max, readln_echo echo) {
     }
     return buf - start;
 }
-
 
 // Row is 1-24, col is 1-80
 void term_move(byte row, byte col) {

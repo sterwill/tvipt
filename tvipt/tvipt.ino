@@ -10,7 +10,7 @@ void setup() {
     cli_init();
 
     // Drain any queued keys (noise?) so we don't put garbage in the command buffer.
-    while (term_serial.available()) {
+    while (term_available()) {
         term_serial.read();
     }
 

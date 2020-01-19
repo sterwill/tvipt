@@ -44,8 +44,8 @@ bool send_available() {
     // Read all available plaintext from src
     uint8_t plaintext[MSG_CIPHERTEXT_LEN_MAX];
     uint8_t plaintext_size;
-    for (plaintext_size = 0; plaintext_size < MSG_CIPHERTEXT_LEN_MAX && term_serial.available(); plaintext_size++) {
-        char c = (char) term_serial.read();
+    for (plaintext_size = 0; plaintext_size < MSG_CIPHERTEXT_LEN_MAX && term_available(); plaintext_size++) {
+        char c = (char) term_read();
         if (c == BREAK_CHAR) {
             term_writeln("break!");
             return false;
@@ -212,8 +212,8 @@ bool tvipt_proto_connect(const char *host, uint16_t port) {
     term_println(port, DEC);
 
     // Eat buffered input (this can be garbage after a reboot of the terminal)
-    while (term_serial.available()) {
-        term_serial.read();
+    while (term_available()) {
+        term_read();
     }
 
     wifi_set_loop_callback(tvipt_proto_cb);

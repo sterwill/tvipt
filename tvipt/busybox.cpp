@@ -103,7 +103,8 @@ ssize_t FAST_FUNC safe_write(int fd, const void *buf, size_t count) {
         if (fd == netfd) {
             n = G.client->write((const uint8_t *) buf, count);
         } else {
-            n = term_write((const uint8_t *) buf, count);
+            term_write((const uint8_t *) buf, count);
+            n = count;
         }
     } while (n < 0 && errno == EINTR);
 
@@ -197,8 +198,7 @@ void con_escape(void) {
                             " c go to character mode\r\n"
                             " e exit telnet\r\n");
 
-    if (term_serial.readBytes(&b, 1) == -1)
-        doexit(EXIT_FAILURE);
+    b = term_read();
 
     switch (b) {
         case 'l':
@@ -439,15 +439,15 @@ void setConMode(void) {
     if (G.telflags & UF_ECHO) {
         if (G.charmode == CHM_TRY) {
             G.charmode = CHM_ON;
-            term_serial.println("telnets: entering character mode");
-            term_serial.println("telnets: escape character is '^]'.");
+            term_writeln("telnets: entering character mode");
+            term_writeln("telnets: escape character is '^]'.");
             rawmode();
         }
     } else {
         if (G.charmode != CHM_OFF) {
             G.charmode = CHM_OFF;
-            term_serial.println("telnets: entering line mode");
-            term_serial.println("telnets: escape character is '^C'.");
+            term_writeln("telnets: entering line mode");
+            term_writeln("telnets: escape character is '^C'.");
             cookmode();
         }
     }
@@ -634,4 +634,3 @@ void busybox_init(unsigned int win_width, unsigned int win_height, char *ttype, 
     G.client = client;
     G.autologin = autologin;
 }
-
